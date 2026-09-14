@@ -26,7 +26,8 @@
 4. 推到 `main` → GitHub Pages
 5. 繁中短訊通知家長；家長回「清了」才閉環
 
-家長偏好：**日曆／甘特**看進度（已在 `index.html`）；待辦可勾選（localStorage，不回寫 GitHub）。
+家長偏好：**日曆／甘特**看進度（已在 `index.html`，預設摺疊）；待辦可勾選（localStorage，不回寫 GitHub）。
+小孩平板用 `abigail.html`（李悅）／`gloria.html`（李昕）：勾選功課、積分換零食。
 
 ---
 
@@ -148,9 +149,15 @@ Session 過期：`LOGIN_REQUIRED` → 對 **該孩所屬** agent 的對話出安
 ### `index.html`
 
 - 讀 `status.json`
-- 分頁：**日曆**（Macau today、李悅藍／李昕粉）＋**時程甘特**（今日→截止）
+- 先顯示兩孩待辦清單；**日曆／時程**摺在下方
 - 勾選存 **localStorage**（不回寫 repo）
 - 「清了」按鈕複製給家長貼回主 agent
+
+### `abigail.html` / `gloria.html`
+
+- 各孩平板自管頁；與家長頁共用 `puiching-eclass-todos-v1`
+- 勾選賺積分，獎勵商店兌換實體零食（需家長兌現）
+- 李昕頁（`gloria.html`）為較大字、無時程圖
 
 開發時改 UI／契約：開 PR 說明如何驗證 Pages；合併 `main` 後硬重新整理。
 
@@ -230,6 +237,9 @@ Pages 來源：`main` 根目錄。人類驗證：https://samulee003.github.io/pu
 | `README.md` | 人類＋agents 入口 |
 | `status.json` | 機器真相 |
 | `DASHBOARD.md` | Markdown 真相 |
-| `index.html` | 日曆／甘特／勾選 UI |
+| `index.html` | 家長總覽（待辦為主，日曆／時程可展開） |
+| `abigail.html` | 李悅平板頁 |
+| `gloria.html` | 李昕平板頁 |
+| `assets/child.js` | 小孩頁共用邏輯（勾選＋積分） |
 
 **最後更新說明：** 2026-09-14 — 雙軌甲案、密碼甲＋乙、Pages 日曆＋甘特、17:30 暫停、勤讀獎 eClass=20。

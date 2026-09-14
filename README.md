@@ -4,6 +4,14 @@
 **Agents JSON：** https://samulee003.github.io/puiching-eclass-handoff/status.json  
 **Repo：** https://github.com/samulee003/puiching-eclass-handoff
 
+## 頁面
+
+- **家長總覽：** `index.html` — 兩孩待辦、複製「清了」；日曆／時程可展開
+- **李悅平板：** `abigail.html`
+- **李昕平板：** `gloria.html`
+
+三頁共用 `status.json`；勾選存在本機瀏覽器，不回寫 GitHub。
+
 ## 給 Codex／Gemini
 
 先讀 **`AGENTS.md`**（整套工作流），再讀 `status.json`（優先）或 `DASHBOARD.md` + `SOP.md`。  
@@ -18,7 +26,9 @@
 
 | 檔 | 對象 |
 |---|---|
-| `index.html` | 人類 dashboard |
+| `index.html` | 家長總覽 |
+| `abigail.html` | 李悅平板 |
+| `gloria.html` | 李昕平板 |
 | `status.json` | Agent 機器讀取 |
 | `DASHBOARD.md` | 人類／agent 備援 |
 | `SOP.md` | 操作步驟 |
