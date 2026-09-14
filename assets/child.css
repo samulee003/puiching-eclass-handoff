@@ -101,6 +101,28 @@ ul.tasks { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
 
 .empty { color: var(--muted); font-size: 1rem; padding: 20px; text-align: center; background: var(--card); border: 2px dashed var(--border); border-radius: 16px; }
 
+/* Kid-friendly Gantt-style timeline */
+.tl-section { margin: 20px 0 8px; }
+.tl-section h2 { font-size: 1.15rem; margin: 0 0 10px; display: flex; align-items: center; gap: 8px; }
+.tl-wrap { background: var(--card); border: 2px solid var(--border); border-radius: 16px; padding: 14px; }
+.tl-axis { position: relative; height: 18px; margin-bottom: 8px; }
+.tl-axis .tl-start, .tl-axis .tl-end { position: absolute; top: 0; font-size: .78rem; color: var(--muted); font-weight: 600; }
+.tl-axis .tl-start { left: 0; }
+.tl-axis .tl-end { right: 0; }
+.tl-today-label { position: absolute; top: 0; transform: translateX(-50%); font-size: .75rem; font-weight: 800; color: var(--accent); white-space: nowrap; }
+.tl-lanes { position: relative; }
+.tl-today-line { position: absolute; top: 0; bottom: 0; width: 3px; background: var(--accent); border-radius: 2px; z-index: 0; opacity: .45; pointer-events: none; }
+.tl-lane { position: relative; margin-bottom: 12px; }
+.tl-lane:last-child { margin-bottom: 2px; }
+.tl-lanelabel { display: flex; justify-content: space-between; gap: 10px; font-size: .92rem; font-weight: 700; margin-bottom: 3px; position: relative; z-index: 1; }
+.tl-lanelabel .tl-when { color: var(--muted); font-weight: 700; font-size: .8rem; flex-shrink: 0; }
+.tl-track { position: relative; height: 18px; background: var(--bg); border-radius: 8px; z-index: 1; }
+.tl-bar { position: absolute; top: 3px; height: 12px; border-radius: 6px; background: var(--accent); min-width: 8px; }
+.tl-bar.soon { background: var(--warn); }
+.tl-bar.overdue { background: var(--overdue); }
+.tl-bar.done { opacity: .3; }
+body.simple .tl-lanelabel { font-size: 1rem; }
+
 /* simple mode: bigger for the youngest child */
 body.simple .t-title { font-size: 1.25rem; }
 body.simple .task { min-height: 76px; padding: 18px; }

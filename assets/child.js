@@ -51,6 +51,18 @@
 
   function subjectEmoji(sub) { return SUBJECT_EMOJI[sub] || '📚'; }
 
+  function shortTitle(it) {
+    var t = it.title || '';
+    return t.length > 18 ? t.slice(0, 16) + '…' : t;
+  }
+
+  function addDays(ymd, n) {
+    var dt = new Date(Date.UTC(ymd.y, ymd.m - 1, ymd.d + n));
+    var iso = dt.toISOString().slice(0, 10);
+    var p = iso.split('-').map(Number);
+    return { y: p[0], m: p[1], d: p[2], iso: iso };
+  }
+
   function dueChip(dueIso, today) {
     var due = parseYmd(dueIso);
     if (!due) return { cls: 'due-later', text: '無限期' };
@@ -120,6 +132,85 @@
 
   var DATA = null;
 
+  // A kid-friendly Gantt: each near-term homework item is a bar running up to its
+  // due date, with a "today" line, so children can see how much time they have.
+  function renderTimeline(child) {
+    var tl = document.getElementById('tl');
+    if (!tl) return;
+    var store = loadStore();
+    var today = parseYmd(todayMacau());
+
+    var rows = [];
+    sectionItems(child).forEach(function (pair) {
+      pair[1].forEach(function (it) {
+        var due = parseYmd(it.due);
+        if (!due) return;
+        var diff = daysBetween(today, due);
+        if (diff < -14 || diff > 35) return; // focus on the next few weeks
+        rows.push({ it: it, due: due, diff: diff, key: itemKey(child.id, pair[0], it) });
+      });
+    });
+    rows.sort(function (a, b) { return a.due.iso < b.due.iso ? -1 : (a.due.iso > b.due.iso ? 1 : 0); });
+
+    var head = '<h2>🗓️ 時間表 <span class="badge">今天 → 交</span></h2>';
+    if (!rows.length) {
+      tl.innerHTML = head + '<div class="empty">這陣子沒有要交的功課 🎉</div>';
+      return;
+    }
+
+    var rangeStart = today, rangeEnd = addDays(today, 7);
+    rows.forEach(function (r) {
+      if (r.due.iso < rangeStart.iso) rangeStart = r.due;
+      if (r.due.iso > rangeEnd.iso) rangeEnd = r.due;
+    });
+    var span = Math.max(daysBetween(rangeStart, rangeEnd), 7);
+    function pct(d) {
+      var o = daysBetween(rangeStart, d) / span * 100;
+      return Math.max(0, Math.min(100, o));
+    }
+    var todayPct = pct(today);
+
+    var lanes = '';
+    rows.forEach(function (r) {
+      var done = !!store[r.key];
+      var overdue = r.diff < 0;
+      var barStart, barEnd;
+      if (overdue) {
+        barEnd = r.due;
+        barStart = addDays(r.due, -2);
+        if (barStart.iso < rangeStart.iso) barStart = rangeStart;
+      } else {
+        barStart = today;
+        barEnd = r.due;
+      }
+      var left = pct(barStart);
+      var width = Math.max(pct(barEnd) - left, 3);
+      var cls = done ? 'done' : (overdue ? 'overdue' : (r.diff <= 1 ? 'soon' : ''));
+      var chip = dueChip(r.it.due, today);
+      lanes +=
+        '<div class="tl-lane">' +
+          '<div class="tl-lanelabel">' +
+            '<span>' + subjectEmoji(r.it.subject) + ' ' + shortTitle(r.it) + '</span>' +
+            '<span class="tl-when">' + chip.text + '</span>' +
+          '</div>' +
+          '<div class="tl-track"><div class="tl-bar ' + cls + '" style="left:' + left + '%;width:' + width + '%"></div></div>' +
+        '</div>';
+    });
+
+    tl.innerHTML = head +
+      '<div class="tl-wrap">' +
+        '<div class="tl-axis">' +
+          '<span class="tl-start">' + rangeStart.m + '/' + rangeStart.d + '</span>' +
+          '<span class="tl-today-label" style="left:' + todayPct + '%">今天</span>' +
+          '<span class="tl-end">' + rangeEnd.m + '/' + rangeEnd.d + '</span>' +
+        '</div>' +
+        '<div class="tl-lanes">' +
+          '<div class="tl-today-line" style="left:' + todayPct + '%"></div>' +
+          lanes +
+        '</div>' +
+      '</div>';
+  }
+
   function render(child) {
     var store = loadStore();
     var today = parseYmd(todayMacau());
@@ -170,6 +261,7 @@
           if (nowDone) s[key] = true; else delete s[key];
           saveStore(s);
           li.classList.toggle('done', nowDone);
+          renderTimeline(child);
           updateProgress(child);
         }
         li.addEventListener('click', toggle);
@@ -185,6 +277,7 @@
     if (!root.children.length) {
       root.appendChild(el('div', 'empty', '🎈 今天沒有功課項目，好好玩吧！'));
     }
+    renderTimeline(child);
     updateProgress(child);
   }
 
