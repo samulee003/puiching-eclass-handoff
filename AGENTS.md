@@ -26,7 +26,7 @@
 5. 繁中短訊通知家長；家長回「清了」才閉環
 
 家長偏好：**日曆／甘特**看進度（已在 `index.html`）；待辦可勾選（localStorage，不回寫 GitHub）。
-小孩平板使用 `kids.html`：以可愛任務板練習「待開始 → 進行中 → 完成啦」，並與家長頁共用本機完成狀態。
+小孩平板使用 `kids.html`：以可愛任務板練習「待開始 → 進行中 → 完成啦」，並在同一瀏覽器／裝置與家長頁共用本機完成狀態。
 
 ---
 
@@ -156,7 +156,7 @@ Session 過期：`LOGIN_REQUIRED` → 對 **該孩所屬** agent 的對話出安
 
 - 給平板上的小孩使用，選擇李悅／李昕後顯示個人任務板
 - 以「待開始／進行中／完成啦」三欄練習專案管理
-- 完成狀態與 `index.html` 共用 `puiching-eclass-todos-v1`；進行中狀態另存 `puiching-eclass-project-v1`
+- 完成狀態與 `index.html` 在同一瀏覽器／裝置共用 `puiching-eclass-todos-v1`；進行中狀態另存 `puiching-eclass-project-v1`
 - 可用 `?child=li-yue` 或 `?child=li-xin` 直接開指定小孩
 
 開發時改 UI／契約：開 PR 說明如何驗證 Pages；合併 `main` 後硬重新整理。

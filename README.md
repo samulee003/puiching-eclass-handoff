@@ -9,7 +9,7 @@
 - **家長 DASHBOARD：** `index.html` — 看兩孩全局進度、日曆、甘特圖，並複製「清了」訊息。
 - **小孩平板學習頁：** `kids.html` — 選擇李悅或李昕，以可愛的任務板練習「待開始 → 進行中 → 完成啦」。
 
-兩頁共用 `status.json` 和本機完成勾選；小孩頁的「開始任務／完成任務」會同步家長頁的勾選狀態，不會把資料寫回 GitHub。可用 `kids.html?child=li-yue` 或 `kids.html?child=li-xin` 直接開指定小孩的任務板。
+兩頁共用 `status.json`；在同一瀏覽器／裝置上共用本機完成勾選。小孩頁的「開始任務／完成任務」會同步同一瀏覽器的家長頁勾選狀態，不會把資料寫回 GitHub。可用 `kids.html?child=li-yue` 或 `kids.html?child=li-xin` 直接開指定小孩的任務板。
 
 ## 給 Codex／Gemini
 
