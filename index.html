@@ -9,6 +9,8 @@
   :root {
     --bg: #0f1419; --card: #1a2332; --text: #e7ecf3; --muted: #8b9bb4;
     --accent: #3d8bfd; --warn: #ffb020; --ok: #3dd68c; --border: #2a3548;
+    --child-yue: #3d8bfd; --child-xin: #f472b6;
+    --overdue: #ff6b6b; --upcoming: #3dd68c;
   }
   * { box-sizing: border-box; }
   body {
@@ -43,9 +45,14 @@
   li {
     border-top: 1px solid var(--border); padding: 10px 0; display: grid;
     grid-template-columns: 28px 1fr; gap: 8px; align-items: start;
+    transition: background .2s, box-shadow .2s;
   }
   li:first-child { border-top: 0; }
   li.done .title { text-decoration: line-through; color: var(--muted); }
+  li.highlight {
+    background: rgba(61, 139, 253, .12); border-radius: 8px;
+    box-shadow: inset 0 0 0 1px rgba(61, 139, 253, .35);
+  }
   input[type=checkbox] { width: 18px; height: 18px; margin-top: 2px; accent-color: var(--ok); }
   .title { font-weight: 600; }
   .row { color: var(--muted); font-size: 0.82rem; display: flex; flex-wrap: wrap; gap: 6px; margin-top: 2px; }
@@ -59,6 +66,155 @@
   }
   footer { margin-top: 24px; color: var(--muted); font-size: 0.82rem; }
   a { color: var(--accent); }
+
+  /* Tabs */
+  .view-tabs {
+    display: flex; gap: 6px; margin-bottom: 10px; flex-wrap: wrap;
+  }
+  .view-tabs button {
+    flex: 1; min-width: 120px; text-align: center; padding: 10px 14px;
+    background: #1a2332; border-color: var(--border);
+  }
+  .view-tabs button.active {
+    background: #1f4b8f; border-color: #2f6fd4; font-weight: 600;
+  }
+  .view-panel { display: none; margin-bottom: 16px; }
+  .view-panel.active { display: block; }
+  .overview-card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+    padding: 14px; box-shadow: 0 8px 24px rgba(0,0,0,.25);
+  }
+  .legend {
+    display: flex; flex-wrap: wrap; gap: 10px 16px; font-size: 0.8rem;
+    color: var(--muted); margin-bottom: 12px;
+  }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .legend i {
+    display: inline-block; width: 10px; height: 10px; border-radius: 50%;
+  }
+  .legend .dot-yue { background: var(--child-yue); }
+  .legend .dot-xin { background: var(--child-xin); }
+  .legend .dot-overdue { background: var(--overdue); border-radius: 2px; width: 12px; height: 8px; }
+  .legend .dot-upcoming { background: var(--upcoming); border-radius: 2px; width: 12px; height: 8px; }
+
+  /* Calendar */
+  .cal-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 10px; gap: 8px;
+  }
+  .cal-header h2 { margin: 0; font-size: 1rem; }
+  .cal-nav { display: flex; gap: 6px; }
+  .cal-nav button { padding: 6px 10px; font-size: 0.85rem; min-width: 36px; }
+  .cal-weekdays {
+    display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px;
+    font-size: 0.72rem; color: var(--muted); text-align: center; margin-bottom: 4px;
+  }
+  .cal-grid {
+    display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px;
+  }
+  .cal-day {
+    min-height: 52px; padding: 4px 3px; border-radius: 8px;
+    border: 1px solid transparent; background: #141c28; cursor: pointer;
+    display: flex; flex-direction: column; align-items: stretch;
+    font-size: 0.78rem; transition: border-color .15s, background .15s;
+  }
+  .cal-day:hover { border-color: var(--border); background: #1c2738; }
+  .cal-day.other-month { opacity: .35; pointer-events: none; }
+  .cal-day.today { border-color: var(--accent); box-shadow: inset 0 0 0 1px rgba(61,139,253,.3); }
+  .cal-day.selected { background: #1f3350; border-color: #2f6fd4; }
+  .cal-day.overdue-day { background: rgba(255,107,107,.08); }
+  .cal-day-num { font-weight: 600; text-align: center; line-height: 1.2; }
+  .cal-dots {
+    display: flex; flex-wrap: wrap; gap: 2px; justify-content: center;
+    margin-top: 3px; flex: 1; align-content: flex-start;
+  }
+  .cal-dot {
+    width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
+  }
+  .cal-dot.yue { background: var(--child-yue); }
+  .cal-dot.xin { background: var(--child-xin); }
+  .cal-dot.overdue { box-shadow: 0 0 0 1px var(--overdue); }
+  .cal-day-detail {
+    margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border);
+    font-size: 0.85rem;
+  }
+  .cal-day-detail h3 { margin: 0 0 8px; font-size: 0.85rem; color: var(--text); }
+  .cal-day-detail ul { margin: 0; }
+  .cal-day-detail li {
+    display: block; border: 0; padding: 6px 0; grid-template-columns: 1fr;
+    border-bottom: 1px solid var(--border);
+  }
+  .cal-day-detail li:last-child { border-bottom: 0; }
+  .cal-item-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .cal-item-badge {
+    font-size: 10px; padding: 1px 6px; border-radius: 4px; font-weight: 600;
+  }
+  .cal-item-badge.yue { background: rgba(61,139,253,.2); color: var(--child-yue); }
+  .cal-item-badge.xin { background: rgba(244,114,182,.2); color: var(--child-xin); }
+  .cal-item-badge.overdue { background: rgba(255,107,107,.2); color: var(--overdue); }
+
+  /* Gantt */
+  .gantt-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .gantt {
+    min-width: 480px; position: relative; padding-bottom: 8px;
+  }
+  .gantt-body { margin-left: 108px; position: relative; }
+  .gantt-axis {
+    display: flex; border-bottom: 1px solid var(--border);
+    margin-bottom: 6px; position: relative; height: 28px;
+  }
+  .gantt-axis-cell {
+    flex: 1; min-width: 36px; text-align: center; font-size: 0.68rem;
+    color: var(--muted); padding-top: 4px; border-left: 1px solid rgba(42,53,72,.5);
+  }
+  .gantt-axis-cell:first-child { border-left: 0; }
+  .gantt-today-line {
+    position: absolute; top: 0; bottom: 0; width: 2px;
+    background: var(--accent); z-index: 2; pointer-events: none;
+  }
+  .gantt-today-label {
+    position: absolute; top: -2px; font-size: 0.65rem; color: var(--accent);
+    transform: translateX(-50%); white-space: nowrap; font-weight: 600;
+  }
+  .gantt-group { margin-bottom: 12px; }
+  .gantt-group-title {
+    font-size: 0.85rem; font-weight: 600; margin-bottom: 6px;
+    padding-left: 4px;
+  }
+  .gantt-group-title.yue { color: var(--child-yue); }
+  .gantt-group-title.xin { color: var(--child-xin); }
+  .gantt-row {
+    display: grid; grid-template-columns: 108px 1fr;
+    align-items: center; min-height: 30px; margin-bottom: 4px;
+  }
+  .gantt-label {
+    font-size: 0.72rem; color: var(--muted); padding-right: 8px;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    line-height: 1.25;
+  }
+  .gantt-track {
+    position: relative; height: 22px; background: #141c28;
+    border-radius: 6px; overflow: visible;
+  }
+  .gantt-bar {
+    position: absolute; top: 3px; height: 16px; border-radius: 4px;
+    min-width: 6px; transition: opacity .2s;
+  }
+  .gantt-bar.yue { background: var(--child-yue); }
+  .gantt-bar.xin { background: var(--child-xin); }
+  .gantt-bar.overdue { background: var(--overdue); opacity: .85; }
+  .gantt-bar.done { opacity: .28; }
+  .gantt-bar-title {
+    position: absolute; left: 4px; top: 50%; transform: translateY(-50%);
+    font-size: 0.65rem; color: #fff; white-space: nowrap;
+    overflow: hidden; text-overflow: ellipsis; max-width: calc(100% - 8px);
+    pointer-events: none; text-shadow: 0 1px 2px rgba(0,0,0,.5);
+  }
+  .gantt-empty { color: var(--muted); font-size: 0.85rem; padding: 8px 0; }
+  .section-heading {
+    font-size: 0.9rem; color: var(--muted); margin: 18px 0 10px;
+    padding-bottom: 6px; border-bottom: 1px solid var(--border);
+  }
 </style>
 </head>
 <body>
@@ -72,6 +228,19 @@
       <a href="https://eclass.puiching.edu.mo/templates/" target="_blank" rel="noopener">開 eClass</a>
     </div>
     <div id="updated" class="sub"></div>
+
+    <div class="view-tabs" role="tablist">
+      <button type="button" class="active" data-tab="calendar" role="tab" aria-selected="true">日曆</button>
+      <button type="button" data-tab="gantt" role="tab" aria-selected="false">時程甘特</button>
+    </div>
+    <div id="panel-calendar" class="view-panel active overview-card" role="tabpanel">
+      <div id="calendar-root"><div class="sub">載入中…</div></div>
+    </div>
+    <div id="panel-gantt" class="view-panel overview-card" role="tabpanel">
+      <div id="gantt-root"><div class="sub">載入中…</div></div>
+    </div>
+
+    <div class="section-heading">待辦清單</div>
     <div id="app" class="grid"><div class="card">載入中…</div></div>
     <footer>
       勾選存在此瀏覽器（localStorage），不會自動改 GitHub。<br />
@@ -81,6 +250,8 @@
   <div class="toast" id="toast"></div>
 <script>
 const STORE_KEY = 'puiching-eclass-todos-v1';
+const TZ = 'Asia/Macau';
+const CHILD_COLORS = { 'li-yue': 'yue', 'li-xin': 'xin' };
 
 function loadStore() {
   try { return JSON.parse(localStorage.getItem(STORE_KEY) || '{}'); } catch { return {}; }
@@ -95,10 +266,85 @@ function toast(msg) {
   setTimeout(() => t.style.display = 'none', 2200);
 }
 
+function todayMacau() {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: TZ }).format(new Date());
+}
+
+function parseYmd(s) {
+  if (!s) return null;
+  const [y, m, d] = s.split('-').map(Number);
+  if (!y || !m || !d) return null;
+  return { y, m, d, iso: s };
+}
+
+function cmpYmd(a, b) {
+  if (!a || !b) return 0;
+  if (a.iso !== b.iso) return a.iso < b.iso ? -1 : 1;
+  return 0;
+}
+
+function addDays(ymd, n) {
+  const dt = new Date(Date.UTC(ymd.y, ymd.m - 1, ymd.d + n));
+  const iso = dt.toISOString().slice(0, 10);
+  const [y, m, d] = iso.split('-').map(Number);
+  return { y, m, d, iso };
+}
+
+function daysBetween(a, b) {
+  const t0 = Date.UTC(a.y, a.m - 1, a.d);
+  const t1 = Date.UTC(b.y, b.m - 1, b.d);
+  return Math.round((t1 - t0) / 86400000);
+}
+
+function shortTitle(it) {
+  const t = it.title || '';
+  return t.length > 22 ? t.slice(0, 20) + '…' : t;
+}
+
+function sectionItems(child) {
+  return [
+    ['due_today', '今日必做', child.due_today || []],
+    ['due_soon', '近期必做', child.due_soon || []],
+    ['tests_this_week', '本週測驗', child.tests_this_week || []],
+    ['other', '其他', child.other || []]
+  ];
+}
+
+function collectAllItems(data) {
+  const out = [];
+  for (const child of data.children || []) {
+    for (const [sec, secLabel, items] of sectionItems(child)) {
+      for (const it of items) {
+        if (!it.due) continue;
+        out.push({
+          child, section: sec, sectionLabel: secLabel, item: it,
+          key: itemKey(child.id, sec, it),
+          due: parseYmd(it.due),
+          childClass: CHILD_COLORS[child.id] || 'yue'
+        });
+      }
+    }
+  }
+  return out;
+}
+
+function itemsByDate(allItems) {
+  const map = {};
+  for (const row of allItems) {
+    const d = row.item.due;
+    if (!map[d]) map[d] = [];
+    map[d].push(row);
+  }
+  return map;
+}
+
 function renderItem(childId, section, it, store, onToggle) {
   const key = itemKey(childId, section, it);
   const done = !!store[key];
   const li = document.createElement('li');
+  li.dataset.itemKey = key;
+  li.dataset.due = it.due || '';
+  li.dataset.childId = childId;
   if (done) li.classList.add('done');
   const must = it.submit_required === false
     ? '<span class="pill nosubmit">不須繳交</span>'
@@ -113,15 +359,6 @@ function renderItem(childId, section, it, store, onToggle) {
   return { li, key, done };
 }
 
-function sectionItems(child) {
-  return [
-    ['due_today', '今日必做', child.due_today || []],
-    ['due_soon', '近期必做', child.due_soon || []],
-    ['tests_this_week', '本週測驗', child.tests_this_week || []],
-    ['other', '其他', child.other || []]
-  ];
-}
-
 function childProgress(child, store) {
   let total = 0, done = 0;
   for (const [sec, , items] of sectionItems(child)) {
@@ -134,14 +371,254 @@ function childProgress(child, store) {
 }
 
 function isChildCleared(child, store) {
-  const focus = [...(child.due_today || []), ...(child.due_soon || []), ...(child.tests_this_week || [])];
-  if (!focus.length) return false;
-  // For "清了" today: all due_today + due_soon must be checked (tests optional unless due today)
   const must = [...(child.due_today || []), ...(child.due_soon || [])];
   if (!must.length) return [...(child.tests_this_week || [])].every(it => store[itemKey(child.id, 'tests_this_week', it)]);
   return must.every(it => {
     const sec = (child.due_today || []).includes(it) ? 'due_today' : 'due_soon';
     return store[itemKey(child.id, sec, it)];
+  });
+}
+
+function highlightItemsForDate(iso) {
+  document.querySelectorAll('li.highlight').forEach(el => el.classList.remove('highlight'));
+  if (!iso) return;
+  const matches = document.querySelectorAll(`li[data-due="${iso}"]`);
+  if (!matches.length) return;
+  matches.forEach(el => el.classList.add('highlight'));
+  matches[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+let calState = { year: 0, month: 0, selected: null };
+
+function renderCalendar(data, store) {
+  const root = document.getElementById('calendar-root');
+  const today = parseYmd(todayMacau());
+  const allItems = collectAllItems(data);
+  const byDate = itemsByDate(allItems);
+
+  if (!calState.year) {
+    calState.year = today.y;
+    calState.month = today.m;
+  }
+
+  const firstOfMonth = { y: calState.year, m: calState.month, d: 1, iso: '' };
+  firstOfMonth.iso = `${calState.year}-${String(calState.month).padStart(2,'0')}-01`;
+  const startWeekday = new Date(Date.UTC(calState.year, calState.month - 1, 1)).getUTCDay();
+  const daysInMonth = new Date(Date.UTC(calState.year, calState.month, 0)).getUTCDate();
+
+  const monthLabel = new Intl.DateTimeFormat('zh-Hant', {
+    timeZone: TZ, year: 'numeric', month: 'long'
+  }).format(new Date(Date.UTC(calState.year, calState.month - 1, 15)));
+
+  let html = `
+    <div class="legend">
+      <span><i class="dot-yue"></i>李悅</span>
+      <span><i class="dot-xin"></i>李昕</span>
+      <span><i class="dot-overdue"></i>已逾期</span>
+      <span><i class="dot-upcoming"></i>未到期</span>
+    </div>
+    <div class="cal-header">
+      <h2>${monthLabel}</h2>
+      <div class="cal-nav">
+        <button type="button" id="calPrev" aria-label="上月">‹</button>
+        <button type="button" id="calToday" aria-label="本月">今日</button>
+        <button type="button" id="calNext" aria-label="下月">›</button>
+      </div>
+    </div>
+    <div class="cal-weekdays">
+      <span>日</span><span>一</span><span>二</span><span>三</span>
+      <span>四</span><span>五</span><span>六</span>
+    </div>
+    <div class="cal-grid">`;
+
+  const gridStart = addDays(firstOfMonth, -startWeekday);
+  for (let i = 0; i < 42; i++) {
+    const cell = addDays(gridStart, i);
+    const inMonth = cell.m === calState.month && cell.y === calState.year;
+    const dayItems = byDate[cell.iso] || [];
+    const isToday = cell.iso === today.iso;
+    const isOverdue = cmpYmd(cell, today) < 0 && dayItems.length;
+    const isSelected = calState.selected === cell.iso;
+    const classes = ['cal-day'];
+    if (!inMonth) classes.push('other-month');
+    if (isToday) classes.push('today');
+    if (isSelected) classes.push('selected');
+    if (isOverdue) classes.push('overdue-day');
+
+    const dots = dayItems.map(row => {
+      const overdue = cmpYmd(row.due, today) < 0 && !store[row.key];
+      return `<span class="cal-dot ${row.childClass}${overdue ? ' overdue' : ''}" title="${row.child.zh}"></span>`;
+    }).join('');
+
+    html += `<button type="button" class="${classes.join(' ')}" data-date="${cell.iso}" ${inMonth ? '' : 'tabindex="-1"'}>
+      <span class="cal-day-num">${cell.d}</span>
+      <span class="cal-dots">${dots}</span>
+    </button>`;
+  }
+  html += '</div>';
+
+  if (calState.selected && byDate[calState.selected]) {
+    const selItems = byDate[calState.selected];
+    const selOverdue = cmpYmd(parseYmd(calState.selected), today) < 0;
+    html += `<div class="cal-day-detail">
+      <h3>${calState.selected}${selOverdue ? ' <span class="cal-item-badge overdue">已逾期</span>' : ''}</h3>
+      <ul>`;
+    for (const row of selItems) {
+      const done = !!store[row.key];
+      const overdue = cmpYmd(row.due, today) < 0 && !done;
+      html += `<li>
+        <div class="cal-item-row">
+          <span class="cal-item-badge ${row.childClass}">${row.child.zh}</span>
+          ${overdue ? '<span class="cal-item-badge overdue">逾期</span>' : ''}
+          ${done ? '<span class="pill">已完成</span>' : ''}
+        </div>
+        <div class="title" style="font-size:.85rem;margin-top:2px">${row.item.subject} · ${row.item.title}</div>
+        <div class="row"><span>${row.sectionLabel}</span></div>
+      </li>`;
+    }
+    html += '</ul><button type="button" class="primary" id="calJumpList" style="margin-top:8px">跳至待辦清單</button></div>';
+  } else if (calState.selected) {
+    html += `<div class="cal-day-detail"><div class="sub">此日無功課項目</div></div>`;
+  }
+
+  root.innerHTML = html;
+
+  root.querySelector('#calPrev')?.addEventListener('click', () => {
+    calState.month--;
+    if (calState.month < 1) { calState.month = 12; calState.year--; }
+    renderCalendar(data, loadStore());
+  });
+  root.querySelector('#calNext')?.addEventListener('click', () => {
+    calState.month++;
+    if (calState.month > 12) { calState.month = 1; calState.year++; }
+    renderCalendar(data, loadStore());
+  });
+  root.querySelector('#calToday')?.addEventListener('click', () => {
+    calState.year = today.y;
+    calState.month = today.m;
+    calState.selected = today.iso;
+    renderCalendar(data, loadStore());
+    highlightItemsForDate(today.iso);
+  });
+  root.querySelectorAll('.cal-day:not(.other-month)').forEach(btn => {
+    btn.addEventListener('click', () => {
+      calState.selected = btn.dataset.date;
+      renderCalendar(data, loadStore());
+      highlightItemsForDate(calState.selected);
+    });
+  });
+  root.querySelector('#calJumpList')?.addEventListener('click', () => {
+    highlightItemsForDate(calState.selected);
+  });
+}
+
+function renderGantt(data, store) {
+  const root = document.getElementById('gantt-root');
+  const today = parseYmd(todayMacau());
+  const allItems = collectAllItems(data)
+    .filter(row => row.due && daysBetween(today, row.due) <= 120)
+    .sort((a, b) => cmpYmd(a.due, b.due) || a.child.zh.localeCompare(b.child.zh, 'zh-Hant'));
+
+  if (!allItems.length) {
+    root.innerHTML = '<div class="gantt-empty">暫無可顯示的截止日期</div>';
+    return;
+  }
+
+  let rangeStart = today;
+  let rangeEnd = today;
+  for (const row of allItems) {
+    if (cmpYmd(row.due, rangeEnd) > 0) rangeEnd = row.due;
+    if (cmpYmd(row.due, rangeStart) < 0) rangeStart = row.due;
+  }
+  const spanDays = Math.max(daysBetween(rangeStart, rangeEnd), 7);
+  const totalDays = spanDays + 1;
+
+  const axisCells = [];
+  for (let i = 0; i <= spanDays; i++) {
+    const d = addDays(rangeStart, i);
+    axisCells.push(`<div class="gantt-axis-cell">${d.m}/${d.d}</div>`);
+  }
+
+  const todayOffset = Math.max(0, Math.min(spanDays, daysBetween(rangeStart, today)));
+  const todayPct = (todayOffset / spanDays) * 100;
+
+  let groupsHtml = '';
+  for (const child of data.children || []) {
+    const rows = allItems.filter(r => r.child.id === child.id);
+    if (!rows.length) continue;
+    const cls = CHILD_COLORS[child.id] || 'yue';
+    groupsHtml += `<div class="gantt-group">
+      <div class="gantt-group-title ${cls}">${child.zh}</div>`;
+    for (const row of rows) {
+      const done = !!store[row.key];
+      const overdue = cmpYmd(row.due, today) < 0;
+      let barStart, barEnd;
+      if (overdue) {
+        barEnd = row.due;
+        barStart = addDays(row.due, -2);
+        if (cmpYmd(barStart, rangeStart) < 0) barStart = rangeStart;
+      } else {
+        barStart = today;
+        barEnd = row.due;
+        if (cmpYmd(barStart, rangeStart) < 0) barStart = rangeStart;
+      }
+      const left = (daysBetween(rangeStart, barStart) / spanDays) * 100;
+      const width = Math.max((daysBetween(barStart, barEnd) / spanDays) * 100, 1.5);
+      const label = `${row.item.subject} · ${shortTitle(row.item)}`;
+      groupsHtml += `
+        <div class="gantt-row">
+          <div class="gantt-label" title="${row.item.title}">${label}</div>
+          <div class="gantt-track">
+            <div class="gantt-bar ${cls}${overdue ? ' overdue' : ''}${done ? ' done' : ''}"
+              style="left:${left}%;width:${width}%">
+              <span class="gantt-bar-title">${label}</span>
+            </div>
+          </div>
+        </div>`;
+    }
+    groupsHtml += '</div>';
+  }
+
+  root.innerHTML = `
+    <div class="legend">
+      <span><i class="dot-yue"></i>李悅</span>
+      <span><i class="dot-xin"></i>李昕</span>
+      <span>｜藍線＝今日（澳門）</span>
+    </div>
+    <div class="gantt-wrap">
+      <div class="gantt">
+        <div class="gantt-body">
+          <div class="gantt-today-line" style="left:${todayPct}%">
+            <span class="gantt-today-label">今日</span>
+          </div>
+          <div class="gantt-axis">${axisCells.join('')}</div>
+          ${groupsHtml}
+        </div>
+      </div>
+    </div>`;
+}
+
+function refreshViews(data) {
+  const store = loadStore();
+  renderCalendar(data, store);
+  renderGantt(data, store);
+}
+
+function setupTabs() {
+  const tabs = document.querySelectorAll('.view-tabs button');
+  const panels = {
+    calendar: document.getElementById('panel-calendar'),
+    gantt: document.getElementById('panel-gantt')
+  };
+  tabs.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.tab;
+      tabs.forEach(t => {
+        t.classList.toggle('active', t === btn);
+        t.setAttribute('aria-selected', t === btn ? 'true' : 'false');
+      });
+      Object.entries(panels).forEach(([k, el]) => el.classList.toggle('active', k === id));
+    });
   });
 }
 
@@ -153,7 +630,8 @@ async function load() {
     const data = await res.json();
     window.__DATA = data;
     document.getElementById('updated').textContent =
-      '更新：' + (data.updated_at || '—') + ' · ' + (data.timezone || '');
+      '更新：' + (data.updated_at || '—') + ' · ' + (data.timezone || TZ);
+    refreshViews(data);
     app.innerHTML = '';
     for (const child of data.children || []) {
       const card = document.createElement('section');
@@ -175,6 +653,7 @@ async function load() {
         const p = childProgress(child, s);
         doneCount.textContent = p.done;
         progressBar.style.width = (p.total ? Math.round(p.done * 100 / p.total) : 0) + '%';
+        if (window.__DATA) refreshViews(window.__DATA);
       };
       const onToggle = (key, checked, li) => {
         const s = loadStore();
@@ -201,6 +680,8 @@ async function load() {
     }
   } catch (e) {
     app.innerHTML = `<div class="card">讀不到 status.json：${e.message}</div>`;
+    document.getElementById('calendar-root').innerHTML = `<div class="sub">載入失敗</div>`;
+    document.getElementById('gantt-root').innerHTML = `<div class="sub">載入失敗</div>`;
   }
 }
 
@@ -233,6 +714,7 @@ document.getElementById('btnReset').addEventListener('click', () => {
   toast('已清除本機勾選');
 });
 
+setupTabs();
 load();
 </script>
 </body>
