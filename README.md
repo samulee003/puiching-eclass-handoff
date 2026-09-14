@@ -6,7 +6,7 @@
 
 ## 給 Codex／Gemini
 
-讀 `status.json`（優先）或 `DASHBOARD.md` + `SOP.md`。  
+先讀 **`AGENTS.md`**（整套工作流），再讀 `status.json`（優先）或 `DASHBOARD.md` + `SOP.md`。  
 李悅＝Abigail（略過所有進階*）；李昕＝Gloria（小一、無進階）。  
 路徑：eClass → 資訊服務 → 家課表。密碼登入時給，勿寫進 repo。
 
@@ -22,3 +22,4 @@
 | `status.json` | Agent 機器讀取 |
 | `DASHBOARD.md` | 人類／agent 備援 |
 | `SOP.md` | 操作步驟 |
+| `AGENTS.md` | **整套工作流（給任何 agent 開發／接手）** |
