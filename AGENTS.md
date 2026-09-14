@@ -26,6 +26,7 @@
 5. 繁中短訊通知家長；家長回「清了」才閉環
 
 家長偏好：**日曆／甘特**看進度（已在 `index.html`）；待辦可勾選（localStorage，不回寫 GitHub）。
+小孩平板使用 `kids.html`：以可愛任務板練習「待開始 → 進行中 → 完成啦」；可選 Firebase 雲端同步，讓筆電與平板共用狀態。
 
 ---
 
@@ -149,7 +150,16 @@ Session 過期：`LOGIN_REQUIRED` → 對 **該孩所屬** agent 的對話出安
 - 讀 `status.json`
 - 分頁：**日曆**（Macau today、李悅藍／李昕粉）＋**時程甘特**（今日→截止）
 - 勾選存 **localStorage**（不回寫 repo）
+- 可在同步面板產生家庭同步碼，連接 Firebase 後跨裝置同步勾選
 - 「清了」按鈕複製給家長貼回主 agent
+
+### `kids.html`
+
+- 給平板上的小孩使用，選擇李悅／李昕後顯示個人任務板
+- 以「待開始／進行中／完成啦」三欄練習專案管理
+- 完成狀態與 `index.html` 在同一瀏覽器／裝置共用 `puiching-eclass-todos-v1`；進行中狀態另存 `puiching-eclass-project-v1`
+- 設定 Firebase 並輸入同一家庭同步碼後，可跨筆電／平板同步兩種狀態
+- 可用 `?child=li-yue` 或 `?child=li-xin` 直接開指定小孩
 
 開發時改 UI／契約：開 PR 說明如何驗證 Pages；合併 `main` 後硬重新整理。
 
@@ -229,6 +239,11 @@ Pages 來源：`main` 根目錄。人類驗證：https://samulee003.github.io/pu
 | `README.md` | 人類＋agents 入口 |
 | `status.json` | 機器真相 |
 | `DASHBOARD.md` | Markdown 真相 |
-| `index.html` | 日曆／甘特／勾選 UI |
+| `index.html` | 家長 DASHBOARD（日曆／甘特／勾選 UI） |
+| `kids.html` | 小孩平板用可愛專案管理 UI |
+| `sync-config.js` | Firebase Web config 佔位（禁止放私鑰／密碼） |
+| `sync.js` | 可選 Firebase 雲端同步與家庭同步碼 |
+| `firebase.rules.json` | Realtime Database 安全規則範本 |
+| `SYNC_SETUP.md` | 跨裝置同步設定 |
 
 **最後更新說明：** 2026-09-14 — 雙軌甲案、密碼甲＋乙、Pages 日曆＋甘特、17:30 暫停、勤讀獎 eClass=20。
