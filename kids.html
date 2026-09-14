@@ -618,6 +618,14 @@
       try { localStorage.setItem(key, JSON.stringify(value)); } catch {}
     }
 
+    function readActiveChild() {
+      try { return localStorage.getItem(ACTIVE_CHILD_KEY) || ''; } catch { return ''; }
+    }
+
+    function writeActiveChild(childId) {
+      try { localStorage.setItem(ACTIVE_CHILD_KEY, childId); } catch {}
+    }
+
     function escapeHtml(value) {
       return String(value ?? '').replace(/[&<>"']/g, char => ({
         '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
@@ -699,7 +707,7 @@
       root.querySelectorAll('[data-child-id]').forEach(button => {
         button.addEventListener('click', () => {
           selectedChildId = button.dataset.childId;
-          writeStore(ACTIVE_CHILD_KEY, selectedChildId);
+          writeActiveChild(selectedChildId);
           const url = new URL(window.location.href);
           url.searchParams.set('child', selectedChildId);
           window.history.replaceState(null, '', url);
@@ -832,7 +840,7 @@
         if (!response.ok) throw new Error('status.json');
         data = await response.json();
         const queryChild = new URLSearchParams(window.location.search).get('child');
-        const savedChild = readStore(ACTIVE_CHILD_KEY);
+        const savedChild = readActiveChild();
         const exists = id => data.children.some(child => child.id === id);
         selectedChildId = exists(queryChild) ? queryChild
           : (exists(savedChild) ? savedChild : data.children[0]?.id);
