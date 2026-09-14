@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "updated_at": "2026-09-14T02:55:24Z",
+  "updated_at": "2026-09-14T08:08:36Z",
   "timezone": "Asia/Macau",
   "repo": "https://github.com/samulee003/puiching-eclass-handoff",
   "rules": {
@@ -30,31 +30,47 @@
           "title": "Study+chop U2 vocab 20–26；listening PL2",
           "due": "2026-09-14",
           "submit_required": true
+        },
+        {
+          "subject": "英文",
+          "title": "Do Wb. p.14（Miss Valentina）",
+          "due": "2026-09-14",
+          "submit_required": true
+        },
+        {
+          "subject": "英文",
+          "title": "Do Wb. p.14（Ms. Au Ieong）",
+          "due": "2026-09-15",
+          "submit_required": false
         }
       ],
       "tests_this_week": [
         {
           "subject": "英文",
-          "title": "Quiz 1",
+          "title": "Quiz 1 on 17/9",
           "due": "2026-09-17",
-          "submit_required": true
+          "submit_required": true,
+          "detail": "Present Simple/Continuous/Past WS1–3 + Reading"
         }
       ],
       "other": [
         {
           "subject": "中文",
-          "title": "第七周口試第一段",
+          "title": "第七周口試第一段（愛國愛澳）",
           "due": "2026-10-16",
           "submit_required": true
         },
         {
           "subject": "中文",
-          "title": "勤讀獎／閱讀卡",
+          "title": "勤讀獎／閱讀卡（全年20張／週上限2）",
           "due": "2027-05-07",
-          "submit_required": true
+          "submit_required": true,
+          "progress": "0/20"
         }
       ],
-      "cleared": false
+      "cleared": false,
+      "chrome_password_saved": true,
+      "login_note": "家長帳 p21528136／李悅"
     },
     {
       "id": "li-xin",
@@ -62,11 +78,32 @@
       "zh": "李昕",
       "grade": "P1",
       "owner": "grok-zhangfei",
+      "due_today": [
+        {
+          "subject": "中文",
+          "title": "生字 P.6–7",
+          "due": "2026-09-14",
+          "submit_required": true,
+          "note": "置頂"
+        }
+      ],
       "due_soon": [
         {
           "subject": "英文",
           "title": "Quiz Listening：數字1–20＋顏色認讀",
           "due": "2026-09-16",
+          "submit_required": false
+        },
+        {
+          "subject": "中文",
+          "title": "默字一：温第1冊生字冊P.2–7",
+          "due": "2026-09-23",
+          "submit_required": false
+        },
+        {
+          "subject": "常識",
+          "title": "9/21–25 認讀評估第1課我的身體",
+          "due": "2026-09-25",
           "submit_required": false
         }
       ],
@@ -84,21 +121,27 @@
           "submit_required": false
         }
       ],
-      "cleared": false
+      "cleared": false,
+      "chrome_password_saved": false
     }
   ],
   "scan_schedule_macau": {
     "weekday": [
-      "15:30",
-      "17:30"
+      "15:30"
     ],
     "sunday": [
       "18:00"
+    ],
+    "chase": [
+      "16:00"
+    ],
+    "paused": [
+      "17:30"
     ]
   },
   "ui": {
     "checkable": true,
     "storage": "localStorage",
-    "close_loop": "paste 李悅清了 / 李昕清了 to Grok"
+    "close_loop": "paste 李悅清了 / 李昕清了 / 兩個清了 to Grok"
   }
 }
