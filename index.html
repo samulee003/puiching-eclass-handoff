@@ -28,6 +28,9 @@
   }
   button.primary { background: #1f4b8f; border-color: #2f6fd4; }
   button.ok { background: #1a4a34; border-color: #2f8a5a; }
+  .child-link { font-weight: 600; }
+  .child-link.yue { background: rgba(61,139,253,.18); border-color: #2f6fd4; color: #cfe1ff; }
+  .child-link.xin { background: rgba(244,114,182,.16); border-color: #b84a86; color: #ffd6ec; }
   .grid { display: grid; gap: 14px; }
   @media (min-width: 800px) { .grid { grid-template-columns: 1fr 1fr; } }
   .card {
@@ -219,8 +222,12 @@
 </head>
 <body>
   <div class="wrap">
-    <h1>培正功課待辦</h1>
-    <div class="sub">勾選＝本機完成 · 按「清了」複製給 Grok 做閉環 · Agents 仍讀 status.json</div>
+    <h1>培正功課待辦 · 家長總覽</h1>
+    <div class="sub">家長後台：彙整兩孩狀態 · 孩子在各自平板管理自己的功課 · Agents 仍讀 status.json</div>
+    <div class="actions">
+      <a class="child-link yue" href="abigail.html">👧 李悅的平板頁</a>
+      <a class="child-link xin" href="gloria.html">👶 李昕的平板頁</a>
+    </div>
     <div class="actions">
       <button class="primary" id="btnCopyAll">複製今日「清了」給 Grok</button>
       <button id="btnReset">清除本機勾選</button>
