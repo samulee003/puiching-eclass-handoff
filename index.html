@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>培正 eClass 功課看板</title>
+<meta name="description" content="Human + agent homework dashboard for Abigail (李悅) and Gloria (李昕)" />
+<style>
+  :root {
+    --bg: #0f1419;
+    --card: #1a2332;
+    --text: #e7ecf3;
+    --muted: #8b9bb4;
+    --accent: #3d8bfd;
+    --warn: #ffb020;
+    --ok: #3dd68c;
+    --danger: #ff6b6b;
+    --border: #2a3548;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: ui-sans-serif, system-ui, -apple-system, "Noto Sans TC", sans-serif;
+    background: radial-gradient(1200px 600px at 10% -10%, #1b2a44, var(--bg));
+    color: var(--text); line-height: 1.45; padding: 24px 16px 64px;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; }
+  h1 { font-size: 1.5rem; margin: 0 0 4px; }
+  .sub { color: var(--muted); font-size: 0.95rem; margin-bottom: 20px; }
+  .badge {
+    display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px;
+    background: #243247; color: var(--muted); margin-right: 6px;
+  }
+  .badge.warn { background: #3a2e14; color: var(--warn); }
+  .badge.ok { background: #143528; color: var(--ok); }
+  .grid { display: grid; gap: 16px; }
+  @media (min-width: 800px) { .grid { grid-template-columns: 1fr 1fr; } }
+  .card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+    padding: 16px 16px 12px; box-shadow: 0 8px 24px rgba(0,0,0,.25);
+  }
+  .card h2 { margin: 0 0 10px; font-size: 1.15rem; }
+  .meta { color: var(--muted); font-size: 0.85rem; margin-bottom: 12px; }
+  h3 { margin: 14px 0 8px; font-size: 0.85rem; letter-spacing: .04em; color: var(--warn); text-transform: none; }
+  ul { list-style: none; padding: 0; margin: 0; }
+  li {
+    border-top: 1px solid var(--border); padding: 10px 0; display: grid; gap: 2px;
+  }
+  li:first-child { border-top: 0; }
+  .title { font-weight: 600; }
+  .row { color: var(--muted); font-size: 0.85rem; display: flex; flex-wrap: wrap; gap: 8px; }
+  .pill {
+    font-size: 11px; padding: 1px 7px; border-radius: 6px; background: #243247; color: var(--muted);
+  }
+  .pill.must { background: #3a1f1f; color: #ffb4b4; }
+  .pill.nosubmit { background: #3a2e14; color: var(--warn); }
+  footer { margin-top: 28px; color: var(--muted); font-size: 0.85rem; }
+  a { color: var(--accent); }
+  .actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 20px; }
+  .actions a {
+    text-decoration: none; background: #243247; color: var(--text); padding: 8px 12px;
+    border-radius: 10px; border: 1px solid var(--border); font-size: 0.9rem;
+  }
+  .err { color: var(--danger); }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>培正 eClass 功課看板</h1>
+    <div class="sub">給家長一眼看完 · 給 Codex／Gemini／Grok 讀 <code>status.json</code></div>
+    <div class="actions">
+      <a href="status.json">status.json（agents）</a>
+      <a href="DASHBOARD.md">DASHBOARD.md</a>
+      <a href="SOP.md">SOP.md</a>
+      <a href="README.md">README</a>
+      <a href="https://eclass.puiching.edu.mo/templates/" target="_blank" rel="noopener">開 eClass</a>
+    </div>
+    <div id="updated" class="sub"></div>
+    <div id="app" class="grid"><div class="card">載入中…</div></div>
+    <footer>
+      掃描節奏（澳門）：平日 15:30／17:30 · 周日 18:00<br />
+      閉環：回「李悅清了」「李昕清了」才勾掉。公開庫不含密碼。
+    </footer>
+  </div>
+<script>
+async function load() {
+  const app = document.getElementById('app');
+  try {
+    const res = await fetch('status.json?ts=' + Date.now());
+    const data = await res.json();
+    document.getElementById('updated').textContent =
+      '更新：' + (data.updated_at || '—') + ' · 時區 ' + (data.timezone || '');
+    app.innerHTML = '';
+    for (const child of data.children || []) {
+      const card = document.createElement('section');
+      card.className = 'card';
+      const cleared = child.cleared
+        ? '<span class="badge ok">已清</span>'
+        : '<span class="badge warn">未清</span>';
+      card.innerHTML = `<h2>${child.zh} <span style="font-weight:500;color:#8b9bb4">／ ${child.en} · ${child.grade}</span></h2>
+        <div class="meta">${cleared} 負責人：${child.owner || '—'}</div>`;
+      const sections = [
+        ['今日必做', child.due_today || []],
+        ['近期必做', child.due_soon || []],
+        ['本週測驗', child.tests_this_week || []],
+        ['其他', child.other || []]
+      ];
+      for (const [label, items] of sections) {
+        if (!items.length) continue;
+        const h = document.createElement('h3');
+        h.textContent = label;
+        card.appendChild(h);
+        const ul = document.createElement('ul');
+        for (const it of items) {
+          const li = document.createElement('li');
+          const must = it.submit_required ? '<span class="pill must">須繳交</span>' : '<span class="pill nosubmit">不須繳交</span>';
+          li.innerHTML = `<div class="title">${it.subject} · ${it.title}</div>
+            <div class="row"><span>截止 ${it.due || '—'}</span>${must}${it.note ? `<span class="pill">${it.note}</span>` : ''}</div>`;
+          ul.appendChild(li);
+        }
+        card.appendChild(ul);
+      }
+      app.appendChild(card);
+    }
+  } catch (e) {
+    app.innerHTML = '<div class="card err">讀不到 status.json：' + e.message + '</div>';
+  }
+}
+load();
+</script>
+</body>
+</html>

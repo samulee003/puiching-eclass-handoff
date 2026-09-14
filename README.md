@@ -1,66 +1,24 @@
-# 培正 eClass 功課盯梢 — 跨 AI 交接包（Codex / Gemini / Cursor / Claude / …）
+# 培正 eClass 功課看板（人類 + Agents）
 
-**用途：** Grok Bot（劉備）週用量滿或離線時，任何能開瀏覽器＋讀本資料夾的 AI／人，依此接手，避免漏家課。
+**人類網頁：** https://samulee003.github.io/puiching-eclass-handoff/  
+**Agents JSON：** https://samulee003.github.io/puiching-eclass-handoff/status.json  
+**Repo：** https://github.com/samulee003/puiching-eclass-handoff
 
-**不要把學生密碼寫進本資料夾。** 密碼只存在密碼管理器／本機鑰匙圈；接手方用表單／人工登入。
+## 給 Codex／Gemini
 
----
+讀 `status.json`（優先）或 `DASHBOARD.md` + `SOP.md`。  
+李悅＝Abigail（略過所有進階*）；李昕＝Gloria（小一、無進階）。  
+路徑：eClass → 資訊服務 → 家課表。密碼登入時給，勿寫進 repo。
 
-## 0. 30 秒上手
+## 給家長
 
-1. 打開學校：https://eclass.puiching.edu.mo/templates/
-2. 用**對應小孩**學生號登入（見下表）
-3. 頂欄：**資訊服務 → 家課表**
-4. 更新本資料夾的 `DASHBOARD.md`
-5. 用繁中、ADHD 格式回報家長（見輸出模板）
+打開上方網頁，看「今日必做」；做完回 Grok「李悅清了／李昕清了」。
 
-## 1. 孩子與專責（防串帳）
+## 檔案
 
-| 英文名 | 中文名 | 年級 | 誰平時負責 | 成功登入必見 |
-|---|---|---|---|---|
-| Abigail | **李悅** | 小三 | Grok 劉備 | 頁面顯示「李悅」 |
-| Gloria | **李昕** | 小一 | Grok 張飛（可改由你接手） | 頁面顯示「李昕」 |
-
-**硬規則：** 一次只登一個學生；換人必先登出。李昕小一**沒有**進階班軌道。李悅家課表會出現「進階英語／進階數學」— **全部忽略，不要寫進摘要**（兩人都不上進階）。
-
-## 2. 易漏陷阱（已實戰踩過）
-
-- 「**不須繳交**」仍可能是今日必做（例：Spelling challenge）→ 必須進「今日必做」
-- 進階班貼文與正班混在同一家課表 → 李悅要過濾進階*
-- 登錯號會顯示另一孩名字 → 先核對中文名再掃
-
-## 3. 掃描節奏（澳門 Asia/Macau）
-
-| 何時 | 做什麼 |
+| 檔 | 對象 |
 |---|---|
-| 平日 15:30 | 主掃兩孩（或你只接手其中一孩） |
-| 平日 17:30 | 補掃；未回「清了」再提醒 |
-| 周日 18:00 | 週末掃 |
-
-## 4. 輸出模板（給家長）
-
-```
-【今日必做·李悅】
-1. …
-2. …
-
-【本週測驗·李悅】
-- …
-
-【今日必做·李昕】
-1. …
-
-回「李悅清了」「李昕清了」才算閉環。
-```
-
-## 5. 檔案
-
-| 檔 | 說明 |
-|---|---|
-| `DASHBOARD.md` | 唯一現況真相（各 AI 覆寫自己負責區塊） |
-| `SOP.md` | 逐步操作 |
-| `README.md` | 本說明 |
-
-## 6. Grok 額度滿時的交接句（可貼給 Codex／Gemini）
-
-> 讀這個資料夾的 README + SOP + DASHBOARD。接手培正 eClass 家課盯梢。李悅＝Abigail，李昕＝Gloria。路徑：資訊服務→家課表。李悅略過所有進階*。更新 DASHBOARD 後用 README 模板回報我。密碼我登入時提供，不要寫進檔案。
+| `index.html` | 人類 dashboard |
+| `status.json` | Agent 機器讀取 |
+| `DASHBOARD.md` | 人類／agent 備援 |
+| `SOP.md` | 操作步驟 |

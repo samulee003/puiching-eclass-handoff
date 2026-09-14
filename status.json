@@ -1,0 +1,94 @@
+{
+  "schema_version": "1.0",
+  "updated_at": "2026-09-14T02:47:00Z",
+  "timezone": "Asia/Macau",
+  "repo": "https://github.com/samulee003/puiching-eclass-handoff",
+  "rules": {
+    "omit_advanced_subjects_for_li_yue": true,
+    "li_xin_has_no_advanced_track": true,
+    "pin_due_today_first": true,
+    "include_no_submit_items": true,
+    "close_loop_requires_parent_cleared_reply": true
+  },
+  "children": [
+    {
+      "id": "li-yue",
+      "en": "Abigail",
+      "zh": "李悅",
+      "grade": "P3",
+      "owner": "grok-liubei",
+      "due_today": [
+        {
+          "subject": "英文",
+          "title": "Spelling challenge (p.27 List 1)",
+          "due": "2026-09-14",
+          "submit_required": false,
+          "note": "易漏"
+        },
+        {
+          "subject": "英文",
+          "title": "Study+chop U2 vocab 20–26；listening PL2",
+          "due": "2026-09-14",
+          "submit_required": true
+        }
+      ],
+      "tests_this_week": [
+        {
+          "subject": "英文",
+          "title": "Quiz 1",
+          "due": "2026-09-17",
+          "submit_required": true
+        }
+      ],
+      "other": [
+        {
+          "subject": "中文",
+          "title": "第七周口試第一段",
+          "due": "2026-10-16",
+          "submit_required": true
+        },
+        {
+          "subject": "中文",
+          "title": "勤讀獎／閱讀卡",
+          "due": "2027-05-07",
+          "submit_required": true
+        }
+      ],
+      "cleared": false
+    },
+    {
+      "id": "li-xin",
+      "en": "Gloria",
+      "zh": "李昕",
+      "grade": "P1",
+      "owner": "grok-zhangfei",
+      "due_soon": [
+        {
+          "subject": "英文",
+          "title": "Quiz Listening：數字1–20＋顏色認讀",
+          "due": "2026-09-16",
+          "submit_required": false
+        }
+      ],
+      "other": [
+        {
+          "subject": "常識",
+          "title": "生詞簿",
+          "due": "2027-06-11",
+          "submit_required": false
+        },
+        {
+          "subject": "導師",
+          "title": "內線 PDF",
+          "due": "2027-07-02",
+          "submit_required": false
+        }
+      ],
+      "cleared": false
+    }
+  ],
+  "scan_schedule_macau": {
+    "weekday": ["15:30", "17:30"],
+    "sunday": ["18:00"]
+  }
+}
