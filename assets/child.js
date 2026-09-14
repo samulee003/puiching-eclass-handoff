@@ -197,12 +197,20 @@
         '</div>';
     });
 
+    // Avoid the "今天" label colliding with the start/end date labels.
+    var startLabel = rangeStart.iso === today.iso
+      ? '' : '<span class="tl-start">' + rangeStart.m + '/' + rangeStart.d + '</span>';
+    var endLabel = rangeEnd.iso === today.iso
+      ? '' : '<span class="tl-end">' + rangeEnd.m + '/' + rangeEnd.d + '</span>';
+    var todayXform = todayPct <= 2 ? 'translateX(0)'
+      : (todayPct >= 98 ? 'translateX(-100%)' : 'translateX(-50%)');
+
     tl.innerHTML = head +
       '<div class="tl-wrap">' +
         '<div class="tl-axis">' +
-          '<span class="tl-start">' + rangeStart.m + '/' + rangeStart.d + '</span>' +
-          '<span class="tl-today-label" style="left:' + todayPct + '%">今天</span>' +
-          '<span class="tl-end">' + rangeEnd.m + '/' + rangeEnd.d + '</span>' +
+          startLabel +
+          '<span class="tl-today-label" style="left:' + todayPct + '%;transform:' + todayXform + '">今天</span>' +
+          endLabel +
         '</div>' +
         '<div class="tl-lanes">' +
           '<div class="tl-today-line" style="left:' + todayPct + '%"></div>' +
