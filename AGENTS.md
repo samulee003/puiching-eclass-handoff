@@ -1,7 +1,8 @@
 # AGENTS.md — 培正 eClass 雙孩功課工作流
 
 > 給任何 AI agent（Codex／Gemini／Claude／Grok／Cursor…）接手或二次開發用。  
-> **禁止**把密碼、OTP、session cookie 寫進本 repo。登入憑證只走各執行環境的安全表單／密碼庫。
+> **禁止**把密碼、OTP、session cookie 寫進本 repo。登入憑證只走各執行環境的安全表單／密碼庫。  
+> **溝通語言：與使用者溝通一律用繁體中文。**
 
 | 資源 | URL |
 |---|---|
