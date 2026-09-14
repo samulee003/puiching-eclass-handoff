@@ -4,6 +4,7 @@
   const TODO_STORE_KEY = 'puiching-eclass-todos-v1';
   const PROJECT_STORE_KEY = 'puiching-eclass-project-v1';
   const SYNC_CODE_KEY = 'puiching-eclass-sync-code-v1';
+  const PENDING_STORE_KEY = 'puiching-eclass-sync-pending-v1';
   const CODE_LENGTH = 20;
   const CODE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
   const CODE_PATTERN = /^[ABCDEFGHJKMNPQRSTUVWXYZ23456789]{20}$/;
@@ -12,6 +13,7 @@
     handlers: {},
     local: { todos: Object.create(null), project: Object.create(null) },
     remote: { todos: Object.create(null), project: Object.create(null) },
+    pending: { todos: Object.create(null), project: Object.create(null) },
     listeners: [],
     connected: false,
     applyingRemote: false,
@@ -65,6 +67,31 @@
       if (value[key] === 'doing' || value[key] === 'done') result[key] = value[key];
     }
     return result;
+  }
+
+  function sanitizePending(kind, value) {
+    const result = Object.create(null);
+    if (!isObject(value)) return result;
+    for (const key of Object.keys(value)) {
+      if (kind === 'todos' && typeof value[key] === 'boolean') result[key] = value[key];
+      if (kind === 'project' &&
+          (value[key] === 'todo' || value[key] === 'doing' || value[key] === 'done')) {
+        result[key] = value[key];
+      }
+    }
+    return result;
+  }
+
+  function readPending() {
+    const value = readJson(PENDING_STORE_KEY);
+    return {
+      todos: sanitizePending('todos', value.todos),
+      project: sanitizePending('project', value.project)
+    };
+  }
+
+  function writePending() {
+    writeJson(PENDING_STORE_KEY, state.pending);
   }
 
   function getConfig() {
@@ -187,7 +214,9 @@
   }
 
   function writeRemote(kind, key, value) {
-    if (!state.roomRef || !state.auth?.currentUser) return Promise.resolve();
+    if (!state.roomRef || !state.auth?.currentUser) {
+      return Promise.reject(new Error('同步尚未連接'));
+    }
     const record = {
       key,
       updatedAt: window.firebase.database.ServerValue.TIMESTAMP,
@@ -196,6 +225,32 @@
     if (kind === 'todos') record.done = Boolean(value);
     else record.status = value || 'todo';
     return state.roomRef.child(kind).child(encodePath(key)).set(record);
+  }
+
+  function sendPending(kind, key, value) {
+    return writeRemote(kind, key, value).then(() => {
+      if (hasOwn(state.pending[kind], key) &&
+          equalValue(kind, state.pending[kind][key], value)) {
+        delete state.pending[kind][key];
+        writePending();
+      }
+    }).catch(() => {
+      updatePanel('已離線', '本機變更已保留；重新連線後會再嘗試同步。', false);
+    });
+  }
+
+  function queueWrite(kind, key, value) {
+    state.pending[kind][key] = value;
+    writePending();
+    return sendPending(kind, key, value);
+  }
+
+  function flushPending() {
+    for (const kind of ['todos', 'project']) {
+      for (const [key, value] of Object.entries(state.pending[kind])) {
+        sendPending(kind, key, value);
+      }
+    }
   }
 
   function publishChanges(kind, nextValue) {
@@ -209,9 +264,7 @@
       const before = localValue(kind, previous, key);
       const after = localValue(kind, next, key);
       if (!equalValue(kind, before, after)) {
-        writeRemote(kind, key, after).catch(() => {
-          updatePanel('已離線', '本機變更已保留；重新連線後會再嘗試同步。', false);
-        });
+        queueWrite(kind, key, after);
       }
     }
   }
@@ -248,11 +301,27 @@
       }
     }
 
+    for (const [key, value] of Object.entries(state.pending[kind])) {
+      const current = localValue(kind, local, key);
+      if (!equalValue(kind, current, value)) {
+        changed = true;
+        if (kind === 'todos') {
+          if (value) local[key] = true;
+          else delete local[key];
+        } else if (value === 'todo') {
+          delete local[key];
+        } else {
+          local[key] = value;
+        }
+      }
+      writes.push([key, value]);
+    }
+
     state.remote[kind] = remote;
     state.applyingRemote = true;
     setLocal(kind, local, changed);
     state.applyingRemote = false;
-    for (const [key, value] of writes) writeRemote(kind, key, value).catch(() => {});
+    for (const [key, value] of writes) queueWrite(kind, key, value);
   }
 
   function reconcileInitial(remoteTodos, remoteProject) {
@@ -270,11 +339,25 @@
       if (value === 'todo') delete nextProject[key];
       else nextProject[key] = value;
     }
+    for (const [key, value] of Object.entries(state.pending.todos)) {
+      if (value) nextTodos[key] = true;
+      else delete nextTodos[key];
+      writes.push(['todos', key, value]);
+    }
+    for (const [key, value] of Object.entries(state.pending.project)) {
+      if (value === 'todo') delete nextProject[key];
+      else nextProject[key] = value;
+      writes.push(['project', key, value]);
+    }
     for (const [key, value] of Object.entries(localTodos)) {
-      if (!hasOwn(remoteTodos, key)) writes.push(['todos', key, value]);
+      if (!hasOwn(remoteTodos, key) && !hasOwn(state.pending.todos, key)) {
+        writes.push(['todos', key, value]);
+      }
     }
     for (const [key, value] of Object.entries(localProject)) {
-      if (!hasOwn(remoteProject, key)) writes.push(['project', key, value]);
+      if (!hasOwn(remoteProject, key) && !hasOwn(state.pending.project, key)) {
+        writes.push(['project', key, value]);
+      }
     }
 
     state.remote = {
@@ -285,7 +368,7 @@
     setLocal('todos', nextTodos, true);
     setLocal('project', nextProject, true);
     state.applyingRemote = false;
-    for (const [kind, key, value] of writes) writeRemote(kind, key, value).catch(() => {});
+    for (const [kind, key, value] of writes) queueWrite(kind, key, value);
   }
 
   function attachListeners() {
@@ -454,12 +537,22 @@
     state.handlers = handlers || {};
     state.local.todos = sanitizeTodos(readJson(TODO_STORE_KEY));
     state.local.project = sanitizeProject(readJson(PROJECT_STORE_KEY));
+    state.pending = readPending();
     setupPanel();
     const saved = readSavedCode();
     if (isConfigured() && CODE_PATTERN.test(saved)) {
       window.setTimeout(() => connect(saved, true), 0);
     }
   }
+
+  window.addEventListener('online', () => {
+    if (state.connected) {
+      flushPending();
+      return;
+    }
+    const saved = readSavedCode();
+    if (isConfigured() && CODE_PATTERN.test(saved)) connect(saved, true);
+  });
 
   window.PuichingSync = {
     register,
