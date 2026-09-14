@@ -1,0 +1,853 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>小小專案隊｜培正功課</title>
+  <meta name="description" content="給李悅和李昕在平板上使用的可愛任務管理頁" />
+  <style>
+    :root {
+      --ink: #3c3154;
+      --muted: #766b8c;
+      --paper: #fffaf2;
+      --card: #ffffff;
+      --line: #eadff0;
+      --lavender: #8d7bea;
+      --lavender-dark: #6956c7;
+      --peach: #ffb36b;
+      --mint: #65cbb1;
+      --pink: #f38bb5;
+      --yellow: #ffd96a;
+      --shadow: 0 12px 28px rgba(105, 86, 199, .12);
+      --radius: 22px;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 8% 4%, rgba(255, 217, 106, .42), transparent 22rem),
+        radial-gradient(circle at 96% 12%, rgba(243, 139, 181, .25), transparent 20rem),
+        var(--paper);
+      font-family: ui-rounded, "Nunito", "Noto Sans TC", system-ui, sans-serif;
+      line-height: 1.5;
+    }
+    body::before {
+      content: "";
+      position: fixed;
+      inset: auto -5rem -6rem auto;
+      width: 18rem;
+      height: 18rem;
+      border-radius: 50%;
+      background: rgba(101, 203, 177, .16);
+      pointer-events: none;
+    }
+    button, a { font: inherit; }
+    button { cursor: pointer; }
+    a { color: inherit; }
+    .page { width: min(1120px, calc(100% - 28px)); margin: 0 auto; padding: 18px 0 56px; }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      color: var(--ink);
+      font-size: 1.1rem;
+      font-weight: 800;
+      text-decoration: none;
+    }
+    .brand-mark {
+      display: grid;
+      width: 38px;
+      height: 38px;
+      place-items: center;
+      border-radius: 14px;
+      background: var(--yellow);
+      box-shadow: 0 5px 0 #eab94a;
+      font-size: 1.25rem;
+    }
+    .parent-link {
+      padding: 9px 13px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, .78);
+      color: var(--lavender-dark);
+      font-size: .86rem;
+      font-weight: 700;
+      text-decoration: none;
+    }
+    .parent-link:hover, .parent-link:focus-visible { background: #fff; border-color: var(--lavender); }
+
+    .hero {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+      min-height: 218px;
+      padding: 28px clamp(22px, 5vw, 52px);
+      overflow: hidden;
+      border-radius: 30px;
+      background: linear-gradient(120deg, #e8e2ff, #fff0db 58%, #ffe2ed);
+      box-shadow: var(--shadow);
+    }
+    .hero::after {
+      content: "";
+      position: absolute;
+      right: -45px;
+      bottom: -80px;
+      width: 220px;
+      height: 220px;
+      border: 24px solid rgba(255, 255, 255, .48);
+      border-radius: 50%;
+    }
+    .hero-copy { position: relative; z-index: 1; max-width: 650px; }
+    .kicker {
+      margin: 0 0 5px;
+      color: var(--lavender-dark);
+      font-size: .86rem;
+      font-weight: 800;
+      letter-spacing: .08em;
+    }
+    .hero h1 {
+      margin: 0;
+      color: var(--ink);
+      font-size: clamp(1.65rem, 4vw, 2.55rem);
+      line-height: 1.18;
+    }
+    .hero p:not(.kicker) { margin: 12px 0 0; color: #665978; font-size: 1rem; }
+    .hero-character {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      width: 128px;
+      height: 128px;
+      flex: 0 0 128px;
+      place-items: center;
+      border: 8px solid rgba(255, 255, 255, .72);
+      border-radius: 42% 58% 55% 45%;
+      background: #fff;
+      box-shadow: 0 10px 0 rgba(105, 86, 199, .14);
+      font-size: 4.5rem;
+      transform: rotate(5deg);
+    }
+    .steps {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 18px;
+    }
+    .step {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 11px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, .7);
+      color: #695d7e;
+      font-size: .82rem;
+      font-weight: 700;
+    }
+    .step b {
+      display: grid;
+      width: 22px;
+      height: 22px;
+      place-items: center;
+      border-radius: 50%;
+      background: var(--lavender);
+      color: #fff;
+      font-size: .75rem;
+    }
+
+    .section { margin-top: 20px; }
+    .section-title {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+    .section-title h2 { margin: 0; font-size: 1.12rem; }
+    .section-title p { margin: 0; color: var(--muted); font-size: .86rem; }
+
+    .profiles {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+    .profile-button {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-height: 72px;
+      padding: 12px 16px;
+      border: 2px solid var(--line);
+      border-radius: var(--radius);
+      background: rgba(255, 255, 255, .84);
+      color: var(--ink);
+      text-align: left;
+      box-shadow: 0 5px 0 rgba(105, 86, 199, .06);
+      transition: transform .15s, border-color .15s, box-shadow .15s;
+    }
+    .profile-button:hover { transform: translateY(-2px); }
+    .profile-button.active {
+      border-color: var(--lavender);
+      background: #f0edff;
+      box-shadow: 0 6px 0 rgba(141, 123, 234, .22);
+    }
+    .profile-avatar {
+      display: grid;
+      width: 42px;
+      height: 42px;
+      flex: 0 0 42px;
+      place-items: center;
+      border-radius: 15px;
+      background: #dff7ef;
+      font-size: 1.5rem;
+    }
+    .profile-button.xin .profile-avatar { background: #ffe2ed; }
+    .profile-name { display: block; font-size: 1rem; font-weight: 800; }
+    .profile-grade { display: block; color: var(--muted); font-size: .8rem; }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+    }
+    .summary-card {
+      min-height: 106px;
+      padding: 15px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: rgba(255, 255, 255, .88);
+      box-shadow: var(--shadow);
+    }
+    .summary-label { color: var(--muted); font-size: .8rem; font-weight: 800; }
+    .summary-value { margin-top: 3px; font-size: 1.55rem; font-weight: 900; }
+    .summary-note { color: var(--muted); font-size: .76rem; }
+    .summary-card.today { border-color: #ffd89d; background: #fff8e9; }
+    .summary-card.doing { border-color: #b9e8dd; background: #effcf8; }
+    .summary-card.done { border-color: #d1c9ff; background: #f4f2ff; }
+    .summary-card.progress-card { border-color: #ffc7dc; background: #fff1f6; }
+    .mini-progress {
+      height: 10px;
+      margin-top: 9px;
+      overflow: hidden;
+      border-radius: 99px;
+      background: #eadff0;
+    }
+    .mini-progress i {
+      display: block;
+      width: 0;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, var(--pink), var(--lavender));
+      transition: width .25s ease;
+    }
+
+    .board-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1.65fr) minmax(250px, .75fr);
+      gap: 16px;
+      align-items: start;
+    }
+    .board-card, .coach-card {
+      border: 1px solid var(--line);
+      border-radius: 28px;
+      background: rgba(255, 255, 255, .9);
+      box-shadow: var(--shadow);
+    }
+    .board-card { padding: 20px; }
+    .board-card-header {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .board-card-header h2 { margin: 0; font-size: 1.25rem; }
+    .board-card-header p { margin: 3px 0 0; color: var(--muted); font-size: .85rem; }
+    .board-hint {
+      padding: 7px 10px;
+      border-radius: 999px;
+      background: #fff4c9;
+      color: #8c6b1b;
+      font-size: .76rem;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+    .board {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .kanban-column {
+      min-width: 0;
+      padding: 11px;
+      border-radius: 18px;
+      background: #faf7ff;
+    }
+    .kanban-column.doing { background: #effcf8; }
+    .kanban-column.done { background: #fff5dc; }
+    .column-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+      margin-bottom: 9px;
+    }
+    .column-header h3 { margin: 0; font-size: .88rem; }
+    .column-count {
+      display: grid;
+      min-width: 23px;
+      height: 23px;
+      padding: 0 5px;
+      place-items: center;
+      border-radius: 50%;
+      background: #e8e1ff;
+      color: var(--lavender-dark);
+      font-size: .74rem;
+      font-weight: 900;
+    }
+    .doing .column-count { background: #c9f0e5; color: #258b73; }
+    .done .column-count { background: #ffe5a2; color: #987122; }
+    .column-empty {
+      min-height: 82px;
+      padding: 18px 8px;
+      border: 1px dashed #d9cfe9;
+      border-radius: 13px;
+      color: var(--muted);
+      font-size: .78rem;
+      text-align: center;
+    }
+    .task-card {
+      margin-top: 8px;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      background: #fff;
+      box-shadow: 0 5px 12px rgba(105, 86, 199, .08);
+    }
+    .task-card:first-of-type { margin-top: 0; }
+    .task-card.done { opacity: .76; }
+    .task-top {
+      display: flex;
+      align-items: start;
+      justify-content: space-between;
+      gap: 6px;
+    }
+    .subject {
+      color: var(--lavender-dark);
+      font-size: .72rem;
+      font-weight: 900;
+    }
+    .due {
+      padding: 2px 6px;
+      border-radius: 7px;
+      background: #f1ebff;
+      color: var(--lavender-dark);
+      font-size: .68rem;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+    .due.today { background: #ffe7ba; color: #986421; }
+    .due.overdue { background: #ffe0e4; color: #b54f63; }
+    .task-card h4 {
+      margin: 7px 0 6px;
+      font-size: .88rem;
+      line-height: 1.35;
+      overflow-wrap: anywhere;
+    }
+    .task-card.done h4 { text-decoration: line-through; }
+    .task-detail {
+      margin: 0 0 8px;
+      color: var(--muted);
+      font-size: .75rem;
+      line-height: 1.35;
+    }
+    .task-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 9px; }
+    .tag {
+      padding: 2px 6px;
+      border-radius: 6px;
+      background: #f3eff8;
+      color: var(--muted);
+      font-size: .66rem;
+      font-weight: 700;
+    }
+    .tag.must { background: #ffe1e8; color: #b54f63; }
+    .tag.no-submit { background: #fff0bd; color: #8c6b1b; }
+    .task-actions { display: flex; gap: 6px; }
+    .task-actions button {
+      min-height: 38px;
+      flex: 1;
+      padding: 7px 8px;
+      border: 1px solid #d9cff3;
+      border-radius: 10px;
+      background: #f4f1ff;
+      color: var(--lavender-dark);
+      font-size: .74rem;
+      font-weight: 800;
+    }
+    .task-actions button.primary {
+      border-color: #61c9ad;
+      background: #dff8ef;
+      color: #207f69;
+    }
+    .task-actions button:hover, .task-actions button:focus-visible { filter: brightness(.97); transform: translateY(-1px); }
+
+    .coach-card {
+      position: sticky;
+      top: 14px;
+      padding: 20px;
+      background: linear-gradient(160deg, #fff, #fff2f7);
+    }
+    .coach-icon {
+      display: grid;
+      width: 54px;
+      height: 54px;
+      margin-bottom: 10px;
+      place-items: center;
+      border-radius: 19px;
+      background: #ffe1ed;
+      font-size: 1.7rem;
+    }
+    .coach-card h2 { margin: 0 0 6px; font-size: 1.1rem; }
+    .coach-card p { margin: 0 0 13px; color: var(--muted); font-size: .86rem; }
+    .coach-list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+    .coach-list li {
+      display: flex;
+      align-items: start;
+      gap: 8px;
+      padding: 9px 10px;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, .78);
+      color: #645675;
+      font-size: .8rem;
+    }
+    .coach-list b { color: var(--lavender-dark); }
+    .long-term {
+      margin-top: 14px;
+      padding-top: 13px;
+      border-top: 1px dashed #e2cad7;
+    }
+    .long-term h3 { margin: 0 0 7px; font-size: .85rem; }
+    .long-term p { margin: 0; font-size: .77rem; }
+    .updated { margin-top: 18px; color: var(--muted); font-size: .75rem; text-align: center; }
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 24px;
+      z-index: 3;
+      display: none;
+      max-width: calc(100% - 28px);
+      padding: 11px 16px;
+      transform: translateX(-50%);
+      border: 1px solid #8adbc5;
+      border-radius: 999px;
+      background: #effcf8;
+      box-shadow: var(--shadow);
+      color: #207f69;
+      font-size: .86rem;
+      font-weight: 800;
+      text-align: center;
+    }
+    :focus-visible { outline: 3px solid rgba(141, 123, 234, .5); outline-offset: 2px; }
+
+    @media (max-width: 850px) {
+      .board-layout { grid-template-columns: 1fr; }
+      .coach-card { position: static; }
+    }
+    @media (max-width: 680px) {
+      .hero { min-height: 0; padding: 24px; }
+      .hero-character { width: 86px; height: 86px; flex-basis: 86px; border-width: 5px; font-size: 3rem; }
+      .summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .board { grid-template-columns: 1fr; }
+      .kanban-column { min-height: 0; }
+      .column-empty { min-height: 50px; padding: 12px; }
+    }
+    @media (max-width: 430px) {
+      .page { width: min(100% - 20px, 1120px); padding-top: 12px; }
+      .topbar { align-items: start; }
+      .parent-link { padding: 7px 9px; font-size: .72rem; }
+      .hero { display: block; }
+      .hero-character { position: absolute; right: 16px; bottom: 17px; }
+      .hero-copy { padding-right: 58px; }
+      .profiles { grid-template-columns: 1fr; }
+      .board-card, .coach-card { padding: 15px; border-radius: 22px; }
+      .board-card-header { display: block; }
+      .board-hint { display: inline-block; margin-top: 8px; }
+    }
+    @media (pointer: coarse) {
+      .profile-button { min-height: 78px; }
+      .task-actions button { min-height: 44px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header class="topbar">
+      <a class="brand" href="kids.html">
+        <span class="brand-mark" aria-hidden="true">🌈</span>
+        小小專案隊
+      </a>
+      <a class="parent-link" href="index.html">家長 DASHBOARD ↗</a>
+    </header>
+
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="hero-copy">
+        <p class="kicker">培正功課學習站</p>
+        <h1 id="hero-title">今天，我來管理我的任務！</h1>
+        <p>把大目標拆成小步驟，先開始一件，再一步一步完成。</p>
+        <div class="steps" aria-label="專案管理三步驟">
+          <span class="step"><b>1</b>選一件</span>
+          <span class="step"><b>2</b>開始做</span>
+          <span class="step"><b>3</b>完成它</span>
+        </div>
+      </div>
+      <div class="hero-character" aria-hidden="true">🦊</div>
+    </section>
+
+    <section class="section" aria-labelledby="profile-title">
+      <div class="section-title">
+        <h2 id="profile-title">今天是哪位小隊員？</h2>
+        <p>選好自己的任務板</p>
+      </div>
+      <div id="profiles" class="profiles"><div class="column-empty">載入中…</div></div>
+    </section>
+
+    <section class="section" aria-labelledby="summary-title">
+      <div class="section-title">
+        <h2 id="summary-title">我的小隊進度</h2>
+        <p id="today-label"></p>
+      </div>
+      <div class="summary-grid">
+        <div class="summary-card today">
+          <div class="summary-label">今天要做</div>
+          <div class="summary-value" id="today-count">—</div>
+          <div class="summary-note" id="today-note">準備一下</div>
+        </div>
+        <div class="summary-card doing">
+          <div class="summary-label">進行中</div>
+          <div class="summary-value" id="doing-count">—</div>
+          <div class="summary-note">我正在努力</div>
+        </div>
+        <div class="summary-card done">
+          <div class="summary-label">已完成</div>
+          <div class="summary-value" id="done-count">—</div>
+          <div class="summary-note">每一步都算數 ⭐</div>
+        </div>
+        <div class="summary-card progress-card">
+          <div class="summary-label">全部任務進度</div>
+          <div class="summary-value" id="progress-value">—</div>
+          <div class="mini-progress" aria-hidden="true"><i id="progress-bar"></i></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section board-layout" aria-labelledby="board-title">
+      <div class="board-card">
+        <div class="board-card-header">
+          <div>
+            <h2 id="board-title">我的任務板</h2>
+            <p id="board-subtitle">把任務放到正確的位置</p>
+          </div>
+          <span class="board-hint" id="board-hint">先選一張卡</span>
+        </div>
+        <div id="board" class="board"><div class="column-empty">任務載入中…</div></div>
+      </div>
+
+      <aside class="coach-card" aria-labelledby="coach-title">
+        <div class="coach-icon" aria-hidden="true">🧭</div>
+        <h2 id="coach-title">小隊長提示</h2>
+        <p id="coach-message">你可以先挑最靠近今天的任務。</p>
+        <ol class="coach-list">
+          <li><b>①</b><span>先看截止日期，決定先做哪一項。</span></li>
+          <li><b>②</b><span>按「開始任務」，告訴自己現在要專心。</span></li>
+          <li><b>③</b><span>完成後按「完成任務」，看見自己的進步。</span></li>
+        </ol>
+        <div class="long-term">
+          <h3>小小專案祕訣</h3>
+          <p>大任務也可以分成幾次完成。每天前進一點點，就會離目標更近！</p>
+        </div>
+      </aside>
+    </section>
+
+    <div id="updated" class="updated"></div>
+  </main>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    const TODO_STORE_KEY = 'puiching-eclass-todos-v1';
+    const PROJECT_STORE_KEY = 'puiching-eclass-project-v1';
+    const ACTIVE_CHILD_KEY = 'puiching-eclass-active-child-v1';
+    const TZ = 'Asia/Macau';
+    const PROFILE_META = {
+      'li-yue': { emoji: '🦄', color: 'yue', encouragement: '今天也來完成幾個小目標吧！' },
+      'li-xin': { emoji: '🐰', color: 'xin', encouragement: '小兔子隊員，準備好出發了嗎？' }
+    };
+    const SECTION_META = [
+      ['due_today', '今日必做', 0],
+      ['due_soon', '近期必做', 1],
+      ['tests_this_week', '本週測驗', 2],
+      ['other', '其他任務', 3]
+    ];
+
+    let data = null;
+    let selectedChildId = null;
+    let toastTimer = null;
+
+    function readStore(key) {
+      try {
+        const value = JSON.parse(localStorage.getItem(key) || '{}');
+        return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
+      } catch {
+        return {};
+      }
+    }
+
+    function writeStore(key, value) {
+      try { localStorage.setItem(key, JSON.stringify(value)); } catch {}
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? '').replace(/[&<>"']/g, char => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      }[char]));
+    }
+
+    function itemKey(childId, section, item) {
+      return [childId, section, item.due || '', item.subject || '', item.title || ''].join('|');
+    }
+
+    function todayMacau() {
+      return new Intl.DateTimeFormat('en-CA', { timeZone: TZ }).format(new Date());
+    }
+
+    function parseYmd(value) {
+      if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+      const [y, m, d] = value.split('-').map(Number);
+      return { y, m, d, iso: value };
+    }
+
+    function daysBetween(from, to) {
+      if (!from || !to) return 0;
+      return Math.round(
+        (Date.UTC(to.y, to.m - 1, to.d) - Date.UTC(from.y, from.m - 1, from.d)) / 86400000
+      );
+    }
+
+    function sectionItems(child) {
+      return SECTION_META.flatMap(([section, label, rank]) =>
+        (child[section] || []).map(item => ({
+          item, section, label, rank,
+          key: itemKey(child.id, section, item),
+          due: parseYmd(item.due)
+        }))
+      ).filter(row => row.due);
+    }
+
+    function sortTasks(tasks) {
+      return tasks.slice().sort((a, b) =>
+        a.rank - b.rank || a.due.iso.localeCompare(b.due.iso) ||
+        String(a.item.subject || '').localeCompare(String(b.item.subject || ''), 'zh-Hant')
+      );
+    }
+
+    function dueText(row, today) {
+      const offset = daysBetween(today, row.due);
+      if (offset === 0) return { text: '今天', className: 'today' };
+      if (offset === 1) return { text: '明天', className: '' };
+      if (offset === -1) return { text: '昨天', className: 'overdue' };
+      if (offset < 0) return { text: `逾期 ${Math.abs(offset)} 天`, className: 'overdue' };
+      return { text: `${row.due.m}/${row.due.d}`, className: '' };
+    }
+
+    function statusOf(row, todos, project) {
+      if (todos[row.key]) return 'done';
+      return project[row.key] === 'doing' ? 'doing' : 'todo';
+    }
+
+    function showToast(message) {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.style.display = 'block';
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => { toast.style.display = 'none'; }, 2400);
+    }
+
+    function renderProfiles(children) {
+      const root = document.getElementById('profiles');
+      root.innerHTML = children.map(child => {
+        const meta = PROFILE_META[child.id] || { emoji: '🌟', color: '' };
+        return `
+          <button type="button" class="profile-button ${meta.color} ${child.id === selectedChildId ? 'active' : ''}"
+            data-child-id="${escapeHtml(child.id)}" aria-pressed="${child.id === selectedChildId}">
+            <span class="profile-avatar" aria-hidden="true">${meta.emoji}</span>
+            <span><span class="profile-name">${escapeHtml(child.zh)}</span>
+              <span class="profile-grade">${escapeHtml(child.en)} · ${escapeHtml(child.grade)}</span></span>
+          </button>`;
+      }).join('');
+      root.querySelectorAll('[data-child-id]').forEach(button => {
+        button.addEventListener('click', () => {
+          selectedChildId = button.dataset.childId;
+          writeStore(ACTIVE_CHILD_KEY, selectedChildId);
+          const url = new URL(window.location.href);
+          url.searchParams.set('child', selectedChildId);
+          window.history.replaceState(null, '', url);
+          render();
+        });
+      });
+    }
+
+    function renderSummary(child, tasks, todos, project, today) {
+      const statuses = tasks.map(row => statusOf(row, todos, project));
+      const todayTasks = tasks.filter(row => row.due.iso === today.iso);
+      const todayDone = todayTasks.filter(row => statusOf(row, todos, project) === 'done').length;
+      const doing = statuses.filter(status => status === 'doing').length;
+      const done = statuses.filter(status => status === 'done').length;
+      const percent = tasks.length ? Math.round(done * 100 / tasks.length) : 0;
+      const meta = PROFILE_META[child.id] || { encouragement: '今天也來完成幾個小目標吧！' };
+
+      document.getElementById('today-label').textContent =
+        `${today.y}/${today.m}/${today.d} · ${child.zh}`;
+      document.getElementById('today-count').textContent = `${todayDone}/${todayTasks.length}`;
+      document.getElementById('today-note').textContent = todayTasks.length && todayDone === todayTasks.length
+        ? '今天任務完成啦！🎉' : (todayTasks.length ? '先完成一項就很棒' : '今天沒有截止任務');
+      document.getElementById('doing-count').textContent = doing;
+      document.getElementById('done-count').textContent = `${done} ⭐`;
+      document.getElementById('progress-value').textContent = `${percent}%`;
+      document.getElementById('progress-bar').style.width = `${percent}%`;
+      document.getElementById('board-subtitle').textContent = `${child.zh}的任務分成：待開始、進行中、完成啦`;
+      document.getElementById('board-hint').textContent = todayTasks.some(row => statusOf(row, todos, project) !== 'done')
+        ? '先挑今天的任務' : '做得好，繼續保持！';
+      document.getElementById('coach-message').textContent = meta.encouragement;
+    }
+
+    function taskCard(row, status, today) {
+      const due = dueText(row, today);
+      const item = row.item;
+      const detail = item.detail || item.progress || '';
+      const tags = [
+        item.submit_required === true ? '<span class="tag must">要交</span>' : '',
+        item.submit_required === false ? '<span class="tag no-submit">不用交</span>' : '',
+        item.note ? `<span class="tag">${escapeHtml(item.note)}</span>` : '',
+        row.label !== '今日必做' ? `<span class="tag">${escapeHtml(row.label)}</span>` : ''
+      ].join('');
+      let action = '';
+      if (status === 'todo') {
+        action = '<button type="button" class="primary" data-action="doing">▶ 開始任務</button>';
+      } else if (status === 'doing') {
+        action = '<button type="button" class="primary" data-action="done">✓ 完成任務</button>' +
+          '<button type="button" data-action="todo">先放回去</button>';
+      } else {
+        action = '<button type="button" data-action="todo">再做一次</button>';
+      }
+      return `
+        <article class="task-card ${status}" data-task-key="${escapeHtml(row.key)}">
+          <div class="task-top">
+            <span class="subject">${escapeHtml(item.subject || '任務')}</span>
+            <span class="due ${due.className}">${due.text}</span>
+          </div>
+          <h4>${escapeHtml(item.title || '未命名任務')}</h4>
+          ${detail ? `<p class="task-detail">${escapeHtml(detail)}</p>` : ''}
+          ${tags ? `<div class="task-tags">${tags}</div>` : ''}
+          <div class="task-actions">${action}</div>
+        </article>`;
+    }
+
+    function renderBoard(tasks, todos, project, today) {
+      const root = document.getElementById('board');
+      const columns = [
+        ['todo', '🌱 待開始', '先選一件小任務'],
+        ['doing', '🚀 進行中', '專心完成它'],
+        ['done', '🎉 完成啦', '看看我的成就']
+      ];
+      root.innerHTML = columns.map(([status, title, empty]) => {
+        const cards = sortTasks(tasks.filter(row => statusOf(row, todos, project) === status));
+        return `
+          <section class="kanban-column ${status}" aria-label="${title}">
+            <div class="column-header">
+              <h3>${title}</h3><span class="column-count">${cards.length}</span>
+            </div>
+            ${cards.length
+              ? cards.map(row => taskCard(row, status, today)).join('')
+              : `<div class="column-empty">${empty}</div>`}
+          </section>`;
+      }).join('');
+
+      root.querySelectorAll('[data-action]').forEach(button => {
+        button.addEventListener('click', () => {
+          const card = button.closest('[data-task-key]');
+          updateTask(card.dataset.taskKey, button.dataset.action);
+        });
+      });
+    }
+
+    function updateTask(key, nextStatus) {
+      const todos = readStore(TODO_STORE_KEY);
+      const project = readStore(PROJECT_STORE_KEY);
+      if (nextStatus === 'done') {
+        todos[key] = true;
+        project[key] = 'done';
+        showToast('完成一小步，太棒了！🎉');
+      } else if (nextStatus === 'doing') {
+        delete todos[key];
+        project[key] = 'doing';
+        showToast('任務開始！專心一下下 🚀');
+      } else {
+        delete todos[key];
+        delete project[key];
+        showToast('沒問題，稍後再挑戰！');
+      }
+      writeStore(TODO_STORE_KEY, todos);
+      writeStore(PROJECT_STORE_KEY, project);
+      render();
+    }
+
+    function render() {
+      if (!data || !Array.isArray(data.children) || !data.children.length) return;
+      const child = data.children.find(item => item.id === selectedChildId) || data.children[0];
+      selectedChildId = child.id;
+      const tasks = sortTasks(sectionItems(child));
+      const todos = readStore(TODO_STORE_KEY);
+      const project = readStore(PROJECT_STORE_KEY);
+      const today = parseYmd(todayMacau());
+      renderProfiles(data.children);
+      renderSummary(child, tasks, todos, project, today);
+      renderBoard(tasks, todos, project, today);
+    }
+
+    async function load() {
+      try {
+        const response = await fetch(`status.json?ts=${Date.now()}`);
+        if (!response.ok) throw new Error('status.json');
+        data = await response.json();
+        const queryChild = new URLSearchParams(window.location.search).get('child');
+        const savedChild = readStore(ACTIVE_CHILD_KEY);
+        const exists = id => data.children.some(child => child.id === id);
+        selectedChildId = exists(queryChild) ? queryChild
+          : (exists(savedChild) ? savedChild : data.children[0]?.id);
+        document.getElementById('updated').textContent =
+          `資料更新：${data.updated_at || '—'} · ${data.timezone || TZ}`;
+        render();
+      } catch {
+        document.getElementById('profiles').innerHTML =
+          '<div class="column-empty">暫時讀不到任務，請請家長檢查網路或開啟家長 DASHBOARD。</div>';
+        document.getElementById('board').innerHTML = '';
+        document.getElementById('coach-message').textContent = '資料載入後，就可以開始管理任務了！';
+      }
+    }
+
+    load();
+  </script>
+</body>
+</html>
