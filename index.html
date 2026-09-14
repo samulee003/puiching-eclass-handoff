@@ -218,6 +218,12 @@
     font-size: 0.9rem; color: var(--muted); margin: 18px 0 10px;
     padding-bottom: 6px; border-bottom: 1px solid var(--border);
   }
+  .rewards-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 12px 14px; margin-top: 16px; }
+  .rewards-card h2 { margin: 0 0 4px; font-size: 1rem; }
+  .rewards-card .rw-note { color: var(--muted); font-size: 0.82rem; margin-bottom: 10px; }
+  .rewards-list { display: flex; flex-wrap: wrap; gap: 8px; }
+  .rw-item { background: #243247; border: 1px solid var(--border); border-radius: 10px; padding: 6px 10px; font-size: 0.9rem; }
+  .rw-item b { color: var(--warn); }
 </style>
 </head>
 <body>
@@ -246,6 +252,8 @@
     <div id="panel-gantt" class="view-panel overview-card" role="tabpanel">
       <div id="gantt-root"><div class="sub">載入中…</div></div>
     </div>
+
+    <div id="rewards-menu"></div>
 
     <div class="section-heading">待辦清單</div>
     <div id="app" class="grid"><div class="card">載入中…</div></div>
@@ -629,6 +637,24 @@ function setupTabs() {
   });
 }
 
+function renderRewardsMenu(data) {
+  const root = document.getElementById('rewards-menu');
+  if (!root) return;
+  const r = data.rewards;
+  if (!r || !(r.catalog || []).length) { root.innerHTML = ''; return; }
+  const per = r.points_per_task != null ? r.points_per_task : 10;
+  const bonus = r.all_done_bonus != null ? r.all_done_bonus : 0;
+  const items = r.catalog.map(it =>
+    `<span class="rw-item">${it.emoji || '🎁'} ${it.name} · <b>${it.cost}</b> 分</span>`
+  ).join('');
+  root.innerHTML = `
+    <div class="rewards-card">
+      <h2>🎁 獎勵菜單（實體零食）</h2>
+      <div class="rw-note">完成每項功課 +${per} 分${bonus ? `，當日全清再 +${bonus} 分` : ''}。孩子在平板兌換後會複製訊息給你，由你交付實體零食。積分存孩子平板，不跨裝置同步。</div>
+      <div class="rewards-list">${items}</div>
+    </div>`;
+}
+
 async function load() {
   const app = document.getElementById('app');
   const store = loadStore();
@@ -639,6 +665,7 @@ async function load() {
     document.getElementById('updated').textContent =
       '更新：' + (data.updated_at || '—') + ' · ' + (data.timezone || TZ);
     refreshViews(data);
+    renderRewardsMenu(data);
     app.innerHTML = '';
     for (const child of data.children || []) {
       const card = document.createElement('section');

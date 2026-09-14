@@ -10,6 +10,17 @@
     "include_no_submit_items": true,
     "close_loop_requires_parent_cleared_reply": true
   },
+  "rewards": {
+    "points_per_task": 10,
+    "all_done_bonus": 20,
+    "note": "積分存孩子平板 localStorage；兌換需家長把實體零食交付才算完成",
+    "catalog": [
+      { "id": "gummy", "name": "小熊軟糖", "emoji": "🐻", "cost": 50 },
+      { "id": "choco", "name": "巧克力", "emoji": "🍫", "cost": 80 },
+      { "id": "chips", "name": "洋芋片", "emoji": "🥔", "cost": 120 },
+      { "id": "icecream", "name": "雪糕", "emoji": "🍦", "cost": 150 }
+    ]
+  },
   "children": [
     {
       "id": "li-yue",

@@ -7,8 +7,19 @@
   'use strict';
 
   var STORE_KEY = 'puiching-eclass-todos-v1';
+  var POINTS_KEY = 'puiching-eclass-points-v1';
   var TZ = 'Asia/Macau';
   var CHILD_ID = window.CHILD_ID;
+
+  // Reward config comes from status.json (parent-editable); these are fallbacks.
+  var DEFAULT_REWARDS = {
+    points_per_task: 10,
+    all_done_bonus: 20,
+    catalog: [
+      { id: 'gummy', name: '小熊軟糖', emoji: '🐻', cost: 50 },
+      { id: 'choco', name: '巧克力', emoji: '🍫', cost: 80 }
+    ]
+  };
 
   var SUBJECT_EMOJI = {
     '英文': '🔤', '中文': '📖', '常識': '🌍', '數學': '➗',
@@ -28,6 +39,42 @@
     catch (e) { return {}; }
   }
   function saveStore(s) { localStorage.setItem(STORE_KEY, JSON.stringify(s)); }
+
+  // Points state is per-child and per-device (localStorage). Points are awarded the
+  // first time a task is checked and are NOT removed on uncheck, so children cannot
+  // farm points by toggling. `spent` tracks redemptions.
+  function loadPoints() {
+    try { return JSON.parse(localStorage.getItem(POINTS_KEY) || '{}'); }
+    catch (e) { return {}; }
+  }
+  function savePoints(p) { localStorage.setItem(POINTS_KEY, JSON.stringify(p)); }
+
+  function pointsState() {
+    var all = loadPoints();
+    var s = all[CHILD_ID] || {};
+    return {
+      earned: s.earned || 0,
+      spent: s.spent || 0,
+      awarded: s.awarded || {},
+      bonusDates: s.bonusDates || {},
+      redemptions: s.redemptions || []
+    };
+  }
+  function writePointsState(s) {
+    var all = loadPoints();
+    all[CHILD_ID] = s;
+    savePoints(all);
+  }
+  function balanceOf(s) { return Math.max(0, s.earned - s.spent); }
+
+  function rewardsConfig() {
+    var r = (DATA && DATA.rewards) || {};
+    return {
+      perTask: typeof r.points_per_task === 'number' ? r.points_per_task : DEFAULT_REWARDS.points_per_task,
+      bonus: typeof r.all_done_bonus === 'number' ? r.all_done_bonus : DEFAULT_REWARDS.all_done_bonus,
+      catalog: (r.catalog && r.catalog.length) ? r.catalog : DEFAULT_REWARDS.catalog
+    };
+  }
 
   function itemKey(childId, section, it) {
     return [childId, section, it.due || '', it.subject || '', it.title || ''].join('|');
@@ -219,6 +266,95 @@
       '</div>';
   }
 
+  // Award points the first time a task becomes done. Returns points gained (0 if none).
+  function awardForTask(child, key) {
+    var cfg = rewardsConfig();
+    var s = pointsState();
+    var gained = 0;
+    if (!s.awarded[key]) {
+      s.awarded[key] = true;
+      s.earned += cfg.perTask;
+      gained += cfg.perTask;
+    }
+    // Daily bonus when everything due today is done (once per Macau day).
+    var todayIso = todayMacau();
+    if (!s.bonusDates[todayIso]) {
+      var store = loadStore();
+      var todayItems = child.due_today || [];
+      var allTodayDone = todayItems.length > 0 && todayItems.every(function (it) {
+        return store[itemKey(child.id, 'due_today', it)];
+      });
+      if (allTodayDone) {
+        s.bonusDates[todayIso] = true;
+        s.earned += cfg.bonus;
+        gained += cfg.bonus;
+      }
+    }
+    writePointsState(s);
+    return gained;
+  }
+
+  function renderShop(child) {
+    var shop = document.getElementById('shop');
+    if (!shop) return;
+    var cfg = rewardsConfig();
+    var s = pointsState();
+    var bal = balanceOf(s);
+
+    var cards = cfg.catalog.map(function (item) {
+      var affordable = bal >= item.cost;
+      var owned = s.redemptions.filter(function (r) { return r.id === item.id; }).length;
+      return '' +
+        '<div class="shop-item' + (affordable ? '' : ' locked') + '">' +
+          '<div class="shop-emoji">' + (item.emoji || '🎁') + '</div>' +
+          '<div class="shop-name">' + item.name + '</div>' +
+          '<div class="shop-cost">⭐ ' + item.cost + ' 分' + (owned ? ' · 已換 ' + owned : '') + '</div>' +
+          '<button type="button" class="shop-btn" data-reward="' + item.id + '"' +
+            (affordable ? '' : ' disabled') + '>' +
+            (affordable ? '兌換' : '還差 ' + (item.cost - bal)) +
+          '</button>' +
+        '</div>';
+    }).join('');
+
+    shop.innerHTML =
+      '<h2>🎁 獎勵商店 <span class="badge">⭐ ' + bal + ' 分</span></h2>' +
+      '<div class="shop-hint">做完功課賺積分，換實體小零食！兌換後把訊息拿給爸媽 😋</div>' +
+      '<div class="shop-grid">' + cards + '</div>';
+
+    shop.querySelectorAll('.shop-btn').forEach(function (btn) {
+      if (btn.disabled) return;
+      btn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        redeem(child, btn.dataset.reward);
+      });
+    });
+  }
+
+  function redeem(child, rewardId) {
+    var cfg = rewardsConfig();
+    var item = cfg.catalog.filter(function (i) { return i.id === rewardId; })[0];
+    if (!item) return;
+    var s = pointsState();
+    if (balanceOf(s) < item.cost) {
+      toast('積分還不夠喔，再加油！💪');
+      return;
+    }
+    s.spent += item.cost;
+    s.redemptions.push({ id: item.id, name: item.name, cost: item.cost, at: new Date().toISOString() });
+    writePointsState(s);
+    var msg = '🎁 ' + child.zh + '想用 ' + item.cost + ' 分換 ' + (item.emoji || '') + item.name +
+      '（剩 ' + balanceOf(s) + ' 分）— 請爸媽兌現小零食';
+    copy(msg);
+    toast('🎉 已換 ' + (item.emoji || '') + item.name + '！訊息已複製，拿給爸媽');
+    renderShop(child);
+    updatePointsBadge();
+  }
+
+  function updatePointsBadge() {
+    var el = document.getElementById('points');
+    if (el) el.textContent = balanceOf(pointsState());
+  }
+
   function render(child) {
     var store = loadStore();
     var today = parseYmd(todayMacau());
@@ -269,6 +405,12 @@
           if (nowDone) s[key] = true; else delete s[key];
           saveStore(s);
           li.classList.toggle('done', nowDone);
+          if (nowDone) {
+            var gained = awardForTask(child, key);
+            if (gained > 0) toast('+' + gained + ' ⭐ 積分！');
+            updatePointsBadge();
+            renderShop(child);
+          }
           renderTimeline(child);
           updateProgress(child);
         }
@@ -286,6 +428,8 @@
       root.appendChild(el('div', 'empty', '🎈 今天沒有功課項目，好好玩吧！'));
     }
     renderTimeline(child);
+    renderShop(child);
+    updatePointsBadge();
     updateProgress(child);
   }
 

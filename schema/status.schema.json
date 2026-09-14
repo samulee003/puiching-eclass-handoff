@@ -15,6 +15,30 @@
     "timezone": { "type": "string" },
     "repo": { "type": "string" },
     "rules": { "type": "object" },
+    "rewards": {
+      "type": "object",
+      "description": "Reward-points config: how many points each completed task earns, an optional all-done daily bonus, and the snack catalog children can redeem.",
+      "properties": {
+        "points_per_task": { "type": "integer", "minimum": 0 },
+        "all_done_bonus": { "type": "integer", "minimum": 0 },
+        "note": { "type": "string" },
+        "catalog": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "name", "cost"],
+            "properties": {
+              "id": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+              "name": { "type": "string", "minLength": 1 },
+              "emoji": { "type": "string" },
+              "cost": { "type": "integer", "minimum": 1 }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
     "scan_schedule_macau": { "type": "object" },
     "ui": { "type": "object" },
     "children": {

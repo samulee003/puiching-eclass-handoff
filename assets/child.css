@@ -40,6 +40,12 @@ body {
   margin-bottom: 18px;
 }
 .hero-top { display: flex; align-items: center; gap: 14px; }
+.hero-title { flex: 1; }
+.points-pill {
+  background: rgba(255, 255, 255, .25); color: #fff; font-weight: 800;
+  font-size: 1.15rem; border-radius: 99px; padding: 8px 14px; white-space: nowrap;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .3);
+}
 .avatar {
   width: 60px; height: 60px; border-radius: 50%;
   background: rgba(255, 255, 255, .25);
@@ -122,6 +128,31 @@ ul.tasks { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
 .tl-bar.overdue { background: var(--overdue); }
 .tl-bar.done { opacity: .3; }
 body.simple .tl-lanelabel { font-size: 1rem; }
+
+/* Reward shop */
+.shop-section { margin: 24px 0 8px; }
+.shop-section h2 { font-size: 1.15rem; margin: 0 0 6px; display: flex; align-items: center; gap: 8px; }
+.shop-hint { color: var(--muted); font-size: .9rem; margin-bottom: 12px; }
+.shop-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+@media (min-width: 560px) { .shop-grid { grid-template-columns: repeat(4, 1fr); } }
+.shop-item {
+  background: var(--card); border: 2px solid var(--border); border-radius: 16px;
+  padding: 14px 12px; text-align: center; display: flex; flex-direction: column;
+  align-items: center; gap: 6px;
+}
+.shop-item.locked { opacity: .6; }
+.shop-emoji { font-size: 40px; line-height: 1; }
+.shop-name { font-weight: 700; font-size: 1rem; }
+.shop-cost { color: var(--muted); font-size: .85rem; }
+.shop-btn {
+  margin-top: 6px; font-family: inherit; font-weight: 800; font-size: 1rem;
+  color: #fff; background: var(--accent); border: none; border-radius: 12px;
+  padding: 10px 14px; cursor: pointer; width: 100%; min-height: 44px;
+}
+.shop-btn:disabled { background: #c7cfda; color: #fff; cursor: not-allowed; font-size: .85rem; }
+.shop-btn:not(:disabled):active { transform: translateY(1px); }
+body.simple .shop-name { font-size: 1.1rem; }
+body.simple .shop-emoji { font-size: 46px; }
 
 /* simple mode: bigger for the youngest child */
 body.simple .t-title { font-size: 1.25rem; }
