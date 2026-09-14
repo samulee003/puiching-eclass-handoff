@@ -64,6 +64,32 @@
     background: #143528; color: var(--ok); border: 1px solid #2f8a5a;
     padding: 10px 14px; border-radius: 10px; display: none; z-index: 9;
   }
+  .sync-panel {
+    margin: 10px 0 16px; padding: 12px 14px; border: 1px solid var(--border);
+    border-radius: 14px; background: rgba(26,35,50,.88);
+  }
+  .sync-header {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    font-size: .9rem;
+  }
+  .sync-state {
+    padding: 2px 7px; border-radius: 999px; background: #243247;
+    color: var(--muted); font-size: .72rem; font-weight: 600; white-space: nowrap;
+  }
+  .sync-state.connected { background: #1a4a34; color: var(--ok); }
+  .sync-copy, .sync-message { color: var(--muted); font-size: .78rem; }
+  .sync-copy { margin-top: 4px; }
+  .sync-message { margin-top: 8px; }
+  .sync-controls {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 9px;
+  }
+  .sync-controls label { color: var(--muted); font-size: .78rem; }
+  .sync-controls input {
+    min-width: 190px; flex: 1; padding: 7px 9px; border: 1px solid var(--border);
+    border-radius: 8px; background: #141c28; color: var(--text); font: inherit;
+    font-size: .82rem; letter-spacing: .08em;
+  }
+  .sync-controls button { padding: 7px 9px; font-size: .78rem; }
   footer { margin-top: 24px; color: var(--muted); font-size: 0.82rem; }
   a { color: var(--accent); }
 
@@ -229,6 +255,7 @@
       <a href="https://eclass.puiching.edu.mo/templates/" target="_blank" rel="noopener">開 eClass</a>
     </div>
     <div id="updated" class="sub"></div>
+    <div id="sync-panel" class="sync-panel" data-sync-role="parent"></div>
 
     <div class="view-tabs" role="tablist">
       <button type="button" class="active" data-tab="calendar" role="tab" aria-selected="true">日曆</button>
@@ -249,6 +276,8 @@
     </footer>
   </div>
   <div class="toast" id="toast"></div>
+  <script src="sync-config.js"></script>
+  <script src="sync.js"></script>
 <script>
 const STORE_KEY = 'puiching-eclass-todos-v1';
 const TZ = 'Asia/Macau';
@@ -257,7 +286,10 @@ const CHILD_COLORS = { 'li-yue': 'yue', 'li-xin': 'xin' };
 function loadStore() {
   try { return JSON.parse(localStorage.getItem(STORE_KEY) || '{}'); } catch { return {}; }
 }
-function saveStore(s) { localStorage.setItem(STORE_KEY, JSON.stringify(s)); }
+function saveStore(s) {
+  localStorage.setItem(STORE_KEY, JSON.stringify(s));
+  window.PuichingSync?.replaceTodos(s);
+}
 function itemKey(childId, section, it) {
   return [childId, section, it.due || '', it.subject || '', it.title || ''].join('|');
 }
@@ -710,11 +742,14 @@ document.getElementById('btnCopyAll').addEventListener('click', async () => {
 
 document.getElementById('btnReset').addEventListener('click', () => {
   if (!confirm('清除此瀏覽器全部勾選？')) return;
-  localStorage.removeItem(STORE_KEY);
+  saveStore({});
   load();
   toast('已清除本機勾選');
 });
 
+window.PuichingSync?.register({
+  onTodosChanged: () => { if (window.__DATA) load(); }
+});
 setupTabs();
 load();
 </script>

@@ -441,6 +441,38 @@
     }
     .long-term h3 { margin: 0 0 7px; font-size: .85rem; }
     .long-term p { margin: 0; font-size: .77rem; }
+    .sync-panel {
+      margin-top: 18px; padding: 15px 17px; border: 1px solid var(--line);
+      border-radius: 22px; background: rgba(255,255,255,.9); box-shadow: var(--shadow);
+    }
+    .sync-header {
+      display: flex; align-items: center; justify-content: space-between; gap: 8px;
+      font-size: .92rem;
+    }
+    .sync-state {
+      padding: 3px 8px; border-radius: 999px; background: #f3eff8;
+      color: var(--muted); font-size: .7rem; font-weight: 800; white-space: nowrap;
+    }
+    .sync-state.connected { background: #dff8ef; color: #207f69; }
+    .sync-copy, .sync-message { color: var(--muted); font-size: .76rem; }
+    .sync-copy { margin-top: 4px; }
+    .sync-message { margin-top: 8px; }
+    .sync-controls {
+      display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 9px;
+    }
+    .sync-controls label { color: var(--muted); font-size: .76rem; font-weight: 700; }
+    .sync-controls input {
+      min-width: 190px; flex: 1; padding: 8px 9px; border: 1px solid var(--line);
+      border-radius: 10px; background: #fff; color: var(--ink); font: inherit;
+      font-size: .8rem; letter-spacing: .08em;
+    }
+    .sync-controls button {
+      padding: 8px 10px; border: 1px solid #d9cff3; border-radius: 10px;
+      background: #f4f1ff; color: var(--lavender-dark); font-size: .75rem; font-weight: 800;
+    }
+    .sync-controls button:hover, .sync-controls button:focus-visible {
+      filter: brightness(.97); transform: translateY(-1px);
+    }
     .updated { margin-top: 18px; color: var(--muted); font-size: .75rem; text-align: center; }
     .toast {
       position: fixed;
@@ -581,10 +613,13 @@
       </aside>
     </section>
 
+    <div id="sync-panel" class="sync-panel" data-sync-role="child"></div>
     <div id="updated" class="updated"></div>
   </main>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
+  <script src="sync-config.js"></script>
+  <script src="sync.js"></script>
   <script>
     const TODO_STORE_KEY = 'puiching-eclass-todos-v1';
     const PROJECT_STORE_KEY = 'puiching-eclass-project-v1';
@@ -616,6 +651,8 @@
 
     function writeStore(key, value) {
       try { localStorage.setItem(key, JSON.stringify(value)); } catch {}
+      if (key === TODO_STORE_KEY) window.PuichingSync?.replaceTodos(value);
+      if (key === PROJECT_STORE_KEY) window.PuichingSync?.replaceProject(value);
     }
 
     function readActiveChild() {
@@ -855,6 +892,10 @@
       }
     }
 
+    window.PuichingSync?.register({
+      onTodosChanged: render,
+      onProjectChanged: render
+    });
     load();
   </script>
 </body>
