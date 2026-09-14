@@ -3,128 +3,236 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>培正 eClass 功課看板</title>
-<meta name="description" content="Human + agent homework dashboard for Abigail (李悅) and Gloria (李昕)" />
+<title>培正功課待辦看板</title>
+<meta name="description" content="Checkable homework todos for Abigail (李悅) and Gloria (李昕)" />
 <style>
   :root {
-    --bg: #0f1419;
-    --card: #1a2332;
-    --text: #e7ecf3;
-    --muted: #8b9bb4;
-    --accent: #3d8bfd;
-    --warn: #ffb020;
-    --ok: #3dd68c;
-    --danger: #ff6b6b;
-    --border: #2a3548;
+    --bg: #0f1419; --card: #1a2332; --text: #e7ecf3; --muted: #8b9bb4;
+    --accent: #3d8bfd; --warn: #ffb020; --ok: #3dd68c; --border: #2a3548;
   }
   * { box-sizing: border-box; }
   body {
     margin: 0; font-family: ui-sans-serif, system-ui, -apple-system, "Noto Sans TC", sans-serif;
     background: radial-gradient(1200px 600px at 10% -10%, #1b2a44, var(--bg));
-    color: var(--text); line-height: 1.45; padding: 24px 16px 64px;
+    color: var(--text); line-height: 1.45; padding: 20px 14px 80px;
   }
   .wrap { max-width: 920px; margin: 0 auto; }
-  h1 { font-size: 1.5rem; margin: 0 0 4px; }
-  .sub { color: var(--muted); font-size: 0.95rem; margin-bottom: 20px; }
-  .badge {
-    display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px;
-    background: #243247; color: var(--muted); margin-right: 6px;
+  h1 { font-size: 1.4rem; margin: 0 0 4px; }
+  .sub { color: var(--muted); font-size: 0.92rem; margin-bottom: 14px; }
+  .actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 16px; }
+  .actions a, button {
+    text-decoration: none; background: #243247; color: var(--text); padding: 8px 12px;
+    border-radius: 10px; border: 1px solid var(--border); font-size: 0.9rem; cursor: pointer;
   }
-  .badge.warn { background: #3a2e14; color: var(--warn); }
-  .badge.ok { background: #143528; color: var(--ok); }
-  .grid { display: grid; gap: 16px; }
+  button.primary { background: #1f4b8f; border-color: #2f6fd4; }
+  button.ok { background: #1a4a34; border-color: #2f8a5a; }
+  .grid { display: grid; gap: 14px; }
   @media (min-width: 800px) { .grid { grid-template-columns: 1fr 1fr; } }
   .card {
     background: var(--card); border: 1px solid var(--border); border-radius: 14px;
-    padding: 16px 16px 12px; box-shadow: 0 8px 24px rgba(0,0,0,.25);
+    padding: 14px 14px 10px; box-shadow: 0 8px 24px rgba(0,0,0,.25);
   }
-  .card h2 { margin: 0 0 10px; font-size: 1.15rem; }
-  .meta { color: var(--muted); font-size: 0.85rem; margin-bottom: 12px; }
-  h3 { margin: 14px 0 8px; font-size: 0.85rem; letter-spacing: .04em; color: var(--warn); text-transform: none; }
+  .card h2 { margin: 0 0 6px; font-size: 1.1rem; }
+  .progress {
+    height: 8px; background: #243247; border-radius: 99px; overflow: hidden; margin: 8px 0 12px;
+  }
+  .progress > i { display: block; height: 100%; background: var(--ok); width: 0%; transition: width .2s; }
+  .meta { color: var(--muted); font-size: 0.82rem; margin-bottom: 8px; }
+  h3 { margin: 12px 0 6px; font-size: 0.8rem; color: var(--warn); }
   ul { list-style: none; padding: 0; margin: 0; }
   li {
-    border-top: 1px solid var(--border); padding: 10px 0; display: grid; gap: 2px;
+    border-top: 1px solid var(--border); padding: 10px 0; display: grid;
+    grid-template-columns: 28px 1fr; gap: 8px; align-items: start;
   }
   li:first-child { border-top: 0; }
+  li.done .title { text-decoration: line-through; color: var(--muted); }
+  input[type=checkbox] { width: 18px; height: 18px; margin-top: 2px; accent-color: var(--ok); }
   .title { font-weight: 600; }
-  .row { color: var(--muted); font-size: 0.85rem; display: flex; flex-wrap: wrap; gap: 8px; }
-  .pill {
-    font-size: 11px; padding: 1px 7px; border-radius: 6px; background: #243247; color: var(--muted);
-  }
+  .row { color: var(--muted); font-size: 0.82rem; display: flex; flex-wrap: wrap; gap: 6px; margin-top: 2px; }
+  .pill { font-size: 11px; padding: 1px 7px; border-radius: 6px; background: #243247; }
   .pill.must { background: #3a1f1f; color: #ffb4b4; }
   .pill.nosubmit { background: #3a2e14; color: var(--warn); }
-  footer { margin-top: 28px; color: var(--muted); font-size: 0.85rem; }
-  a { color: var(--accent); }
-  .actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 20px; }
-  .actions a {
-    text-decoration: none; background: #243247; color: var(--text); padding: 8px 12px;
-    border-radius: 10px; border: 1px solid var(--border); font-size: 0.9rem;
+  .toast {
+    position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%);
+    background: #143528; color: var(--ok); border: 1px solid #2f8a5a;
+    padding: 10px 14px; border-radius: 10px; display: none; z-index: 9;
   }
-  .err { color: var(--danger); }
+  footer { margin-top: 24px; color: var(--muted); font-size: 0.82rem; }
+  a { color: var(--accent); }
 </style>
 </head>
 <body>
   <div class="wrap">
-    <h1>培正 eClass 功課看板</h1>
-    <div class="sub">給家長一眼看完 · 給 Codex／Gemini／Grok 讀 <code>status.json</code></div>
+    <h1>培正功課待辦</h1>
+    <div class="sub">勾選＝本機完成 · 按「清了」複製給 Grok 做閉環 · Agents 仍讀 status.json</div>
     <div class="actions">
-      <a href="status.json">status.json（agents）</a>
-      <a href="DASHBOARD.md">DASHBOARD.md</a>
-      <a href="SOP.md">SOP.md</a>
-      <a href="README.md">README</a>
+      <button class="primary" id="btnCopyAll">複製今日「清了」給 Grok</button>
+      <button id="btnReset">清除本機勾選</button>
+      <a href="status.json">status.json</a>
       <a href="https://eclass.puiching.edu.mo/templates/" target="_blank" rel="noopener">開 eClass</a>
     </div>
     <div id="updated" class="sub"></div>
     <div id="app" class="grid"><div class="card">載入中…</div></div>
     <footer>
-      掃描節奏（澳門）：平日 15:30／17:30 · 周日 18:00<br />
-      閉環：回「李悅清了」「李昕清了」才勾掉。公開庫不含密碼。
+      勾選存在此瀏覽器（localStorage），不會自動改 GitHub。<br />
+      做完請按「清了」或回 Grok：「李悅清了」「李昕清了」。
     </footer>
   </div>
+  <div class="toast" id="toast"></div>
 <script>
+const STORE_KEY = 'puiching-eclass-todos-v1';
+
+function loadStore() {
+  try { return JSON.parse(localStorage.getItem(STORE_KEY) || '{}'); } catch { return {}; }
+}
+function saveStore(s) { localStorage.setItem(STORE_KEY, JSON.stringify(s)); }
+function itemKey(childId, section, it) {
+  return [childId, section, it.due || '', it.subject || '', it.title || ''].join('|');
+}
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.style.display = 'block';
+  setTimeout(() => t.style.display = 'none', 2200);
+}
+
+function renderItem(childId, section, it, store, onToggle) {
+  const key = itemKey(childId, section, it);
+  const done = !!store[key];
+  const li = document.createElement('li');
+  if (done) li.classList.add('done');
+  const must = it.submit_required === false
+    ? '<span class="pill nosubmit">不須繳交</span>'
+    : (it.submit_required ? '<span class="pill must">須繳交</span>' : '');
+  li.innerHTML = `
+    <input type="checkbox" ${done ? 'checked' : ''} aria-label="完成" />
+    <div>
+      <div class="title">${it.subject} · ${it.title}</div>
+      <div class="row"><span>截止 ${it.due || '—'}</span>${must}${it.note ? `<span class="pill">${it.note}</span>` : ''}</div>
+    </div>`;
+  li.querySelector('input').addEventListener('change', (e) => onToggle(key, e.target.checked, li));
+  return { li, key, done };
+}
+
+function sectionItems(child) {
+  return [
+    ['due_today', '今日必做', child.due_today || []],
+    ['due_soon', '近期必做', child.due_soon || []],
+    ['tests_this_week', '本週測驗', child.tests_this_week || []],
+    ['other', '其他', child.other || []]
+  ];
+}
+
+function childProgress(child, store) {
+  let total = 0, done = 0;
+  for (const [sec, , items] of sectionItems(child)) {
+    for (const it of items) {
+      total++;
+      if (store[itemKey(child.id, sec, it)]) done++;
+    }
+  }
+  return { total, done };
+}
+
+function isChildCleared(child, store) {
+  const focus = [...(child.due_today || []), ...(child.due_soon || []), ...(child.tests_this_week || [])];
+  if (!focus.length) return false;
+  // For "清了" today: all due_today + due_soon must be checked (tests optional unless due today)
+  const must = [...(child.due_today || []), ...(child.due_soon || [])];
+  if (!must.length) return [...(child.tests_this_week || [])].every(it => store[itemKey(child.id, 'tests_this_week', it)]);
+  return must.every(it => {
+    const sec = (child.due_today || []).includes(it) ? 'due_today' : 'due_soon';
+    return store[itemKey(child.id, sec, it)];
+  });
+}
+
 async function load() {
   const app = document.getElementById('app');
+  const store = loadStore();
   try {
     const res = await fetch('status.json?ts=' + Date.now());
     const data = await res.json();
+    window.__DATA = data;
     document.getElementById('updated').textContent =
-      '更新：' + (data.updated_at || '—') + ' · 時區 ' + (data.timezone || '');
+      '更新：' + (data.updated_at || '—') + ' · ' + (data.timezone || '');
     app.innerHTML = '';
     for (const child of data.children || []) {
       const card = document.createElement('section');
       card.className = 'card';
-      const cleared = child.cleared
-        ? '<span class="badge ok">已清</span>'
-        : '<span class="badge warn">未清</span>';
-      card.innerHTML = `<h2>${child.zh} <span style="font-weight:500;color:#8b9bb4">／ ${child.en} · ${child.grade}</span></h2>
-        <div class="meta">${cleared} 負責人：${child.owner || '—'}</div>`;
-      const sections = [
-        ['今日必做', child.due_today || []],
-        ['近期必做', child.due_soon || []],
-        ['本週測驗', child.tests_this_week || []],
-        ['其他', child.other || []]
-      ];
-      for (const [label, items] of sections) {
+      card.dataset.childId = child.id;
+      const { total, done } = childProgress(child, store);
+      const pct = total ? Math.round(done * 100 / total) : 0;
+      card.innerHTML = `
+        <h2>${child.zh} <span style="font-weight:500;color:#8b9bb4">／ ${child.en} · ${child.grade}</span></h2>
+        <div class="meta"><span class="doneCount">${done}</span>／${total} 完成 · 負責人 ${child.owner || '—'}</div>
+        <div class="progress"><i style="width:${pct}%"></i></div>
+        <div class="actions" style="margin:0 0 8px">
+          <button class="ok btnChildClear" type="button">複製「${child.zh}清了」</button>
+        </div>`;
+      const progressBar = card.querySelector('.progress > i');
+      const doneCount = card.querySelector('.doneCount');
+      const refreshProg = () => {
+        const s = loadStore();
+        const p = childProgress(child, s);
+        doneCount.textContent = p.done;
+        progressBar.style.width = (p.total ? Math.round(p.done * 100 / p.total) : 0) + '%';
+      };
+      const onToggle = (key, checked, li) => {
+        const s = loadStore();
+        if (checked) s[key] = true; else delete s[key];
+        saveStore(s);
+        li.classList.toggle('done', checked);
+        refreshProg();
+      };
+      for (const [sec, label, items] of sectionItems(child)) {
         if (!items.length) continue;
         const h = document.createElement('h3');
         h.textContent = label;
         card.appendChild(h);
         const ul = document.createElement('ul');
-        for (const it of items) {
-          const li = document.createElement('li');
-          const must = it.submit_required ? '<span class="pill must">須繳交</span>' : '<span class="pill nosubmit">不須繳交</span>';
-          li.innerHTML = `<div class="title">${it.subject} · ${it.title}</div>
-            <div class="row"><span>截止 ${it.due || '—'}</span>${must}${it.note ? `<span class="pill">${it.note}</span>` : ''}</div>`;
-          ul.appendChild(li);
-        }
+        for (const it of items) ul.appendChild(renderItem(child.id, sec, it, store, onToggle).li);
         card.appendChild(ul);
       }
+      card.querySelector('.btnChildClear').addEventListener('click', async () => {
+        const text = child.zh + '清了';
+        await navigator.clipboard.writeText(text);
+        toast('已複製：' + text + ' — 貼給 Grok');
+      });
       app.appendChild(card);
     }
   } catch (e) {
-    app.innerHTML = '<div class="card err">讀不到 status.json：' + e.message + '</div>';
+    app.innerHTML = `<div class="card">讀不到 status.json：${e.message}</div>`;
   }
 }
+
+document.getElementById('btnCopyAll').addEventListener('click', async () => {
+  const data = window.__DATA; if (!data) return;
+  const store = loadStore();
+  const lines = [];
+  for (const child of data.children || []) {
+    if (isChildCleared(child, store)) lines.push(child.zh + '清了');
+    else {
+      const open = [];
+      for (const it of [...(child.due_today || [])]) {
+        if (!store[itemKey(child.id, 'due_today', it)]) open.push(it.title);
+      }
+      for (const it of [...(child.due_soon || [])]) {
+        if (!store[itemKey(child.id, 'due_soon', it)]) open.push(it.title);
+      }
+      lines.push(child.zh + (open.length ? '未清：' + open.join('；') : '無今日項'));
+    }
+  }
+  const text = lines.join('\n');
+  await navigator.clipboard.writeText(text);
+  toast('已複製給 Grok');
+});
+
+document.getElementById('btnReset').addEventListener('click', () => {
+  if (!confirm('清除此瀏覽器全部勾選？')) return;
+  localStorage.removeItem(STORE_KEY);
+  load();
+  toast('已清除本機勾選');
+});
+
 load();
 </script>
 </body>

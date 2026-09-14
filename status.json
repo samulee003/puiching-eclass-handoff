@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "updated_at": "2026-09-14T02:47:00Z",
+  "updated_at": "2026-09-14T02:55:24Z",
   "timezone": "Asia/Macau",
   "repo": "https://github.com/samulee003/puiching-eclass-handoff",
   "rules": {
@@ -88,7 +88,17 @@
     }
   ],
   "scan_schedule_macau": {
-    "weekday": ["15:30", "17:30"],
-    "sunday": ["18:00"]
+    "weekday": [
+      "15:30",
+      "17:30"
+    ],
+    "sunday": [
+      "18:00"
+    ]
+  },
+  "ui": {
+    "checkable": true,
+    "storage": "localStorage",
+    "close_loop": "paste 李悅清了 / 李昕清了 to Grok"
   }
 }
