@@ -115,10 +115,10 @@
     if (!due) return { cls: 'due-later', text: '無限期' };
     var diff = daysBetween(today, due);
     if (diff < 0) return { cls: 'overdue', text: '逾期 ' + (-diff) + ' 天' };
-    if (diff === 0) return { cls: 'due-today', text: '今天要交' };
+    if (diff === 0) return { cls: 'due-today', text: '今天' };
     if (diff === 1) return { cls: 'due-soon', text: '明天' };
     if (diff <= 3) return { cls: 'due-soon', text: '還有 ' + diff + ' 天' };
-    return { cls: 'due-later', text: (due.m) + '/' + (due.d) + ' 交' };
+    return { cls: 'due-later', text: (due.m) + '/' + (due.d) };
   }
 
   function sectionItems(child) {
@@ -187,6 +187,14 @@
     var store = loadStore();
     var today = parseYmd(todayMacau());
 
+    var simple = document.body.classList.contains('simple');
+    if (simple) {
+      tl.innerHTML = '';
+      tl.hidden = true;
+      return;
+    }
+    tl.hidden = false;
+
     var rows = [];
     sectionItems(child).forEach(function (pair) {
       pair[1].forEach(function (it) {
@@ -199,9 +207,9 @@
     });
     rows.sort(function (a, b) { return a.due.iso < b.due.iso ? -1 : (a.due.iso > b.due.iso ? 1 : 0); });
 
-    var head = '<h2>🗓️ 時間表 <span class="badge">今天 → 交</span></h2>';
+    var head = '<details class="tl-fold"><summary>這週時程</summary>';
     if (!rows.length) {
-      tl.innerHTML = head + '<div class="empty">這陣子沒有要交的功課 🎉</div>';
+      tl.innerHTML = '';
       return;
     }
 
@@ -252,6 +260,7 @@
     var todayXform = todayPct <= 2 ? 'translateX(0)'
       : (todayPct >= 98 ? 'translateX(-100%)' : 'translateX(-50%)');
 
+    var wasOpen = !!(tl.querySelector('details') && tl.querySelector('details').open);
     tl.innerHTML = head +
       '<div class="tl-wrap">' +
         '<div class="tl-axis">' +
@@ -263,7 +272,11 @@
           '<div class="tl-today-line" style="left:' + todayPct + '%"></div>' +
           lanes +
         '</div>' +
-      '</div>';
+      '</div></details>';
+    if (wasOpen) {
+      var fold = tl.querySelector('details');
+      if (fold) fold.open = true;
+    }
   }
 
   // Award points the first time a task becomes done. Returns points gained (0 if none).
@@ -318,7 +331,7 @@
 
     shop.innerHTML =
       '<h2>🎁 獎勵商店 <span class="badge">⭐ ' + bal + ' 分</span></h2>' +
-      '<div class="shop-hint">做完功課賺積分，換實體小零食！兌換後把訊息拿給爸媽 😋</div>' +
+      '<div class="shop-hint">做完賺積分，換小零食</div>' +
       '<div class="shop-grid">' + cards + '</div>';
 
     shop.querySelectorAll('.shop-btn').forEach(function (btn) {
@@ -355,6 +368,52 @@
     if (el) el.textContent = balanceOf(pointsState());
   }
 
+  function appendTask(ul, child, secKey, it, store, today) {
+    var key = itemKey(child.id, secKey, it);
+    var done = !!store[key];
+    var li = el('li', 'task' + (done ? ' done' : ''));
+    li.setAttribute('role', 'button');
+    li.setAttribute('tabindex', '0');
+    li.dataset.key = key;
+
+    var chip = dueChip(it.due, today);
+    var submit = it.submit_required ? '<span class="chip submit">要交</span>' : '';
+    var detail = it.detail ? '<div class="t-detail">' + it.detail + '</div>' : '';
+    var note = it.note && it.note !== '置頂' ? '<span class="chip due-later">' + it.note + '</span>' : '';
+    var progress = it.progress ? '<span class="chip due-later">' + it.progress + '</span>' : '';
+
+    li.innerHTML =
+      '<span class="check" aria-hidden="true">✓</span>' +
+      '<div>' +
+        '<div class="t-title">' + subjectEmoji(it.subject) + ' ' + (it.title || '') + '</div>' +
+        '<div class="t-meta">' +
+          '<span class="chip ' + chip.cls + '">' + chip.text + '</span>' +
+          submit + note + progress +
+        '</div>' + detail +
+      '</div>';
+
+    function toggle() {
+      var s = loadStore();
+      var nowDone = !s[key];
+      if (nowDone) s[key] = true; else delete s[key];
+      saveStore(s);
+      li.classList.toggle('done', nowDone);
+      if (nowDone) {
+        var gained = awardForTask(child, key);
+        if (gained > 0) toast('+' + gained + ' ⭐ 積分！');
+        updatePointsBadge();
+        renderShop(child);
+      }
+      renderTimeline(child);
+      updateProgress(child);
+    }
+    li.addEventListener('click', toggle);
+    li.addEventListener('keydown', function (e) {
+      if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); toggle(); }
+    });
+    ul.appendChild(li);
+  }
+
   function render(child) {
     var store = loadStore();
     var today = parseYmd(todayMacau());
@@ -367,60 +426,20 @@
       if (!items.length) return;
 
       var sec = el('div', 'section');
-      var h = el('h2', null, emoji + ' ' + label);
-      h.appendChild(el('span', 'badge', String(items.length)));
-      sec.appendChild(h);
-
       var ul = el('ul', 'tasks');
-      items.forEach(function (it) {
-        var key = itemKey(child.id, secKey, it);
-        var done = !!store[key];
-        var li = el('li', 'task' + (done ? ' done' : ''));
-        li.setAttribute('role', 'button');
-        li.setAttribute('tabindex', '0');
-        li.dataset.key = key;
+      items.forEach(function (it) { appendTask(ul, child, secKey, it, store, today); });
 
-        var chip = dueChip(it.due, today);
-        var submit = it.submit_required === false
-          ? '<span class="chip nosubmit">不用交</span>'
-          : (it.submit_required ? '<span class="chip submit">要交給老師</span>' : '');
-        var detail = it.detail ? '<div class="t-detail">' + it.detail + '</div>' : '';
-        var note = it.note ? '<span class="chip due-later">' + it.note + '</span>' : '';
-        var progress = it.progress ? '<span class="chip due-later">進度 ' + it.progress + '</span>' : '';
-
-        li.innerHTML =
-          '<span class="check" aria-hidden="true">✓</span>' +
-          '<div>' +
-            '<div class="t-title">' + subjectEmoji(it.subject) + ' ' + (it.title || '') + '</div>' +
-            '<div class="t-meta">' +
-              '<span class="t-sub">' + (it.subject || '') + '</span>' +
-              '<span class="chip ' + chip.cls + '">' + chip.text + '</span>' +
-              submit + note + progress +
-            '</div>' + detail +
-          '</div>';
-
-        function toggle() {
-          var s = loadStore();
-          var nowDone = !s[key];
-          if (nowDone) s[key] = true; else delete s[key];
-          saveStore(s);
-          li.classList.toggle('done', nowDone);
-          if (nowDone) {
-            var gained = awardForTask(child, key);
-            if (gained > 0) toast('+' + gained + ' ⭐ 積分！');
-            updatePointsBadge();
-            renderShop(child);
-          }
-          renderTimeline(child);
-          updateProgress(child);
-        }
-        li.addEventListener('click', toggle);
-        li.addEventListener('keydown', function (e) {
-          if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); toggle(); }
-        });
-        ul.appendChild(li);
-      });
-      sec.appendChild(ul);
+      if (secKey === 'other') {
+        var det = el('details', 'more-fold');
+        det.innerHTML = '<summary>' + emoji + ' ' + label + ' <span class="badge">' + items.length + '</span></summary>';
+        det.appendChild(ul);
+        sec.appendChild(det);
+      } else {
+        var h = el('h2', null, emoji + ' ' + label);
+        h.appendChild(el('span', 'badge', String(items.length)));
+        sec.appendChild(h);
+        sec.appendChild(ul);
+      }
       root.appendChild(sec);
     });
 
@@ -489,8 +508,14 @@
           child.en + ' · ' + child.grade;
         document.getElementById('avatar').textContent =
           CHILD_ID === 'li-xin' ? '🐰' : '🦊';
-        document.getElementById('updated').textContent =
-          '更新：' + (data.updated_at || '—');
+        document.getElementById('updated').textContent = (function () {
+          if (!data.updated_at) return '';
+          try {
+            return new Intl.DateTimeFormat('zh-Hant', {
+              timeZone: TZ, month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false
+            }).format(new Date(data.updated_at));
+          } catch (e) { return ''; }
+        })();
         render(child);
 
         document.getElementById('btn-done').addEventListener('click', function () {
