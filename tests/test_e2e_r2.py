@@ -21,141 +21,33 @@ import json
 import os
 import pathlib
 import re
+import subprocess
 import sys
 import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
 FIXTURES_DIR = ROOT / "tests" / "fixtures"
 SCRAPER_SCRIPT = ROOT / "scripts" / "scrape_eclass.py"
 
 # Reference date for Macau tests
 MACAU_TODAY = datetime.date(2026, 9, 15)
 
-
-class ReferenceScraperOracle:
-    """Authoritative Reference Oracle implementing the R2 specification rules.
-
-    Used to verify expectations and validate scrape_eclass.py when present.
-    """
-
-    @staticmethod
-    def parse_profile_name(html_text: str) -> str:
-        match = re.search(r'class="student-name"[^>]*>([^<]+)<', html_text)
-        if match:
-            return match.group(1).strip()
-        # Fallback search
-        match2 = re.search(r"學生[：:\s]+([^\s<]+)", html_text)
-        return match2.group(1).strip() if match2 else ""
-
-    @staticmethod
-    def is_login_required(html_text: str) -> bool:
-        login_indicators = [
-            "登入逾時",
-            "請先登入",
-            "使用者未登入",
-            "action=\"/templates/login.php\"",
-            "name=\"user_password\"",
-            "LOGIN_REQUIRED"
-        ]
-        return any(ind in html_text for ind in login_indicators)
-
-    @staticmethod
-    def canonicalize_date(date_str: str, default_year: int = 2026) -> str:
-        s = date_str.strip()
-        # Standard YYYY-MM-DD
-        if re.match(r"^\d{4}-\d{2}-\d{2}$", s):
-            return s
-        # YYYY/MM/DD or YYYY.MM.DD
-        m1 = re.match(r"^(\d{4})[./](\d{1,2})[./](\d{1,2})$", s)
-        if m1:
-            y, m, d = int(m1.group(1)), int(m1.group(2)), int(m1.group(3))
-            return f"{y:04d}-{m:02d}-{d:02d}"
-        # DD/MM/YYYY
-        m2 = re.match(r"^(\d{1,2})[./](\d{1,2})[./](\d{4})$", s)
-        if m2:
-            d, m, y = int(m2.group(1)), int(m2.group(2)), int(m2.group(3))
-            return f"{y:04d}-{m:02d}-{d:02d}"
-        # MM月DD日
-        m3 = re.match(r"^(\d{1,2})月(\d{1,2})日$", s)
-        if m3:
-            m, d = int(m3.group(1)), int(m3.group(2))
-            return f"{default_year:04d}-{m:02d}-{d:02d}"
-        raise ValueError(f"Cannot canonicalize date: {date_str!r}")
-
-    @classmethod
-    def parse_table_items(cls, html_text: str):
-        rows = re.findall(r"<tr[^>]*>(.*?)</tr>", html_text, re.DOTALL)
-        items = []
-        for r in rows:
-            if "<th" in r:
-                continue
-            cells = re.findall(r"<td[^>]*>(.*?)</td>", r, re.DOTALL)
-            if len(cells) < 4:
-                continue
-            subject = re.sub(r"<[^>]+>", "", cells[0]).strip()
-            title = re.sub(r"<[^>]+>", "", cells[1]).strip()
-            raw_due = re.sub(r"<[^>]+>", "", cells[2]).strip()
-            raw_submit = re.sub(r"<[^>]+>", "", cells[3]).strip()
-            notes_cell = cells[4] if len(cells) > 4 else ""
-
-            if not subject or not title:
-                continue
-
-            due = cls.canonicalize_date(raw_due)
-            submit_required = ("不" not in raw_submit) and ("免" not in raw_submit)
-
-            item = {
-                "subject": subject,
-                "title": title,
-                "due": due,
-                "submit_required": submit_required,
-            }
-
-            # Detail extraction for Quiz/Oral
-            detail_match = re.search(r'class="detail-content"[^>]*>(.*?)</div>', notes_cell, re.DOTALL)
-            if detail_match:
-                item["detail"] = detail_match.group(1).strip()
-
-            # Note extraction
-            notes_text = re.sub(r"<div[^>]*detail-content.*?</div>", "", notes_cell, flags=re.DOTALL)
-            notes_clean = re.sub(r"<[^>]+>", "", notes_text).strip()
-            if notes_clean:
-                item["note"] = notes_clean
-
-            items.append(item)
-        return items
-
-    @classmethod
-    def filter_abigail_items(cls, items):
-        """Rule 17: Omit 100% of subjects containing '進階' for Abigail (P3)."""
-        return [it for it in items if "進階" not in it["subject"]]
-
-    @classmethod
-    def categorize_items(cls, items, today: datetime.date):
-        categorized = {
-            "due_today": [],
-            "due_soon": [],
-            "tests_this_week": [],
-            "other": []
-        }
-        week_end = today + datetime.timedelta(days=(6 - today.weekday()))  # End of current calendar week (Sunday)
-
-        for it in items:
-            due_date = datetime.date.fromisoformat(it["due"])
-            title = it["title"]
-            subject = it["subject"]
-            is_test = any(kw in title or kw in subject for kw in ["Quiz", "測驗", "小測", "默寫", "評估", "口試"])
-
-            if is_test and today <= due_date <= today + datetime.timedelta(days=7):
-                categorized["tests_this_week"].append(it)
-            elif due_date <= today:
-                categorized["due_today"].append(it)
-            elif due_date <= today + datetime.timedelta(days=7):
-                categorized["due_soon"].append(it)
-            else:
-                categorized["other"].append(it)
-
-        return categorized
+from scripts.scrape_eclass import (
+    EClassScraper,
+    EClassScrapeError,
+    LoginRequiredError,
+    IdentityMismatchError,
+    SimpleDOMParser,
+    canonicalize_date,
+    filter_and_categorize,
+    parse_homework_html,
+    parse_homework_table_rows,
+    scrape_eclass,
+    verify_identity_and_auth,
+)
 
 
 class TestFeature12SecureEnvCredentials(unittest.TestCase):
@@ -165,17 +57,18 @@ class TestFeature12SecureEnvCredentials(unittest.TestCase):
         """Scraper reads ECLASS_USERNAME and ECLASS_PASSWORD from os.environ."""
         os.environ["ECLASS_USERNAME"] = "test_user_p1"
         os.environ["ECLASS_PASSWORD"] = "test_pass_secret"
-        user = os.environ.get("ECLASS_USERNAME")
-        passwd = os.environ.get("ECLASS_PASSWORD")
-        self.assertEqual(user, "test_user_p1")
-        self.assertEqual(passwd, "test_pass_secret")
+        scraper = EClassScraper("li-yue")
+        self.assertEqual(scraper.username, "test_user_p1")
+        self.assertEqual(scraper.password, "test_pass_secret")
 
     def test_supports_child_specific_env_credentials(self):
         """Supports optional per-child credentials ECLASS_LI_YUE_USERNAME and ECLASS_LI_XIN_USERNAME."""
         os.environ["ECLASS_LI_YUE_USERNAME"] = "p21528136"
         os.environ["ECLASS_LI_XIN_USERNAME"] = "p23528999"
-        self.assertEqual(os.environ.get("ECLASS_LI_YUE_USERNAME"), "p21528136")
-        self.assertEqual(os.environ.get("ECLASS_LI_XIN_USERNAME"), "p23528999")
+        scraper_yue = EClassScraper("li-yue")
+        scraper_xin = EClassScraper("li-xin")
+        self.assertEqual(scraper_yue.username, "p21528136")
+        self.assertEqual(scraper_xin.username, "p23528999")
 
     def test_no_hardcoded_passwords_in_scripts_directory(self):
         """Ensure no password or plaintext credential is saved in any python script."""
@@ -186,9 +79,26 @@ class TestFeature12SecureEnvCredentials(unittest.TestCase):
 
     def test_empty_credentials_raises_login_required_or_error(self):
         """If env vars are missing or empty, execution must refuse without inventing credentials."""
-        empty_env = {}
-        has_creds = bool(empty_env.get("ECLASS_USERNAME") and empty_env.get("ECLASS_PASSWORD"))
-        self.assertFalse(has_creds)
+        old_env = {
+            k: os.environ.pop(k, None)
+            for k in [
+                "ECLASS_USERNAME",
+                "ECLASS_PASSWORD",
+                "ECLASS_LI_YUE_USERNAME",
+                "ECLASS_LI_YUE_PASSWORD",
+                "ECLASS_LI_XIN_USERNAME",
+                "ECLASS_LI_XIN_PASSWORD",
+            ]
+        }
+        try:
+            scraper = EClassScraper("li-yue")
+            with self.assertRaises(LoginRequiredError) as ctx:
+                scraper.login()
+            self.assertIn("LOGIN_REQUIRED", str(ctx.exception))
+        finally:
+            for k, v in old_env.items():
+                if v is not None:
+                    os.environ[k] = v
 
     def test_credential_masking_in_logs(self):
         """Log formatters must mask password or session tokens."""
@@ -202,22 +112,21 @@ class TestFeature13ProfileIdentityVerification(unittest.TestCase):
     def test_verify_abigail_student_name_matches(self):
         """Fixture for Abigail must extract student name '李悅'."""
         html_text = (FIXTURES_DIR / "eclass_abigail_normal.html").read_text(encoding="utf-8")
-        name = ReferenceScraperOracle.parse_profile_name(html_text)
-        self.assertEqual(name, "李悅")
+        res = parse_homework_html(html_text, "li-yue", today=MACAU_TODAY)
+        self.assertEqual(res["student_name"], "李悅")
 
     def test_verify_gloria_student_name_matches(self):
         """Fixture for Gloria must extract student name '李昕'."""
         html_text = (FIXTURES_DIR / "eclass_gloria_normal.html").read_text(encoding="utf-8")
-        name = ReferenceScraperOracle.parse_profile_name(html_text)
-        self.assertEqual(name, "李昕")
+        res = parse_homework_html(html_text, "li-xin", today=MACAU_TODAY)
+        self.assertEqual(res["student_name"], "李昕")
 
     def test_detect_student_identity_mismatch(self):
         """If eClass returns a student name other than target child, it must be flagged."""
         html_text = (FIXTURES_DIR / "eclass_wrong_student.html").read_text(encoding="utf-8")
-        name = ReferenceScraperOracle.parse_profile_name(html_text)
-        self.assertNotEqual(name, "李悅")
-        self.assertNotEqual(name, "李昕")
-        self.assertEqual(name, "陳大文")
+        with self.assertRaises(IdentityMismatchError) as ctx:
+            parse_homework_html(html_text, "li-yue", today=MACAU_TODAY)
+        self.assertIn("IDENTITY_MISMATCH", str(ctx.exception))
 
     def test_student_grade_consistency_abigail(self):
         """Abigail must be in grade P3."""
@@ -234,32 +143,44 @@ class TestFeature14LoginRequiredErrorHandling(unittest.TestCase):
     """Tests for F-14: LOGIN_REQUIRED Error Handling."""
 
     def test_detects_session_expired_html(self):
-        """Login required fixture triggers is_login_required oracle."""
+        """Login required fixture triggers LoginRequiredError via parse_homework_html."""
         html_text = (FIXTURES_DIR / "eclass_login_required.html").read_text(encoding="utf-8")
-        self.assertTrue(ReferenceScraperOracle.is_login_required(html_text))
+        with self.assertRaises(LoginRequiredError) as ctx:
+            parse_homework_html(html_text, "li-yue")
+        self.assertIn("LOGIN_REQUIRED", str(ctx.exception))
 
     def test_detects_timeout_keywords(self):
         """Session timeout text '登入逾時' triggers login required."""
-        self.assertTrue(ReferenceScraperOracle.is_login_required("<div>登入逾時，請重新登入</div>"))
+        with self.assertRaises(LoginRequiredError) as ctx:
+            verify_identity_and_auth("<div>登入逾時，請重新登入</div>", "li-yue")
+        self.assertIn("LOGIN_REQUIRED", str(ctx.exception))
 
     def test_normal_homework_page_not_flagged_as_login_required(self):
         """Active homework pages must not trigger LOGIN_REQUIRED."""
         html_text = (FIXTURES_DIR / "eclass_abigail_normal.html").read_text(encoding="utf-8")
-        self.assertFalse(ReferenceScraperOracle.is_login_required(html_text))
+        res = parse_homework_html(html_text, "li-yue", today=MACAU_TODAY)
+        self.assertEqual(res["child_id"], "li-yue")
+        self.assertEqual(res["student_name"], "李悅")
 
     def test_zero_fake_data_on_login_failure(self):
-        """When login is required, parsed items must be empty list, never fabricated."""
+        """When login is required, parse_homework_html raises LoginRequiredError and never produces fake data."""
         html_text = (FIXTURES_DIR / "eclass_login_required.html").read_text(encoding="utf-8")
-        if ReferenceScraperOracle.is_login_required(html_text):
-            items = []
-        else:
-            items = ReferenceScraperOracle.parse_table_items(html_text)
-        self.assertEqual(items, [])
+        with self.assertRaises(LoginRequiredError):
+            parse_homework_html(html_text, "li-yue")
 
     def test_error_message_contains_login_required_token(self):
-        """The specific exception or log token 'LOGIN_REQUIRED' is emitted."""
-        err_token = "LOGIN_REQUIRED"
-        self.assertEqual(err_token, "LOGIN_REQUIRED")
+        """The specific exception or log token 'LOGIN_REQUIRED' is emitted via subprocess."""
+        cmd = [
+            sys.executable,
+            str(SCRAPER_SCRIPT),
+            "--child",
+            "li-yue",
+            "--fixture",
+            str(FIXTURES_DIR / "eclass_login_required.html"),
+        ]
+        proc = subprocess.run(cmd, capture_output=True, text=True)
+        self.assertEqual(proc.returncode, 1)
+        self.assertIn("LOGIN_REQUIRED", proc.stderr)
 
 
 class TestFeature15eClassHomeworkTableExtraction(unittest.TestCase):
@@ -267,7 +188,9 @@ class TestFeature15eClassHomeworkTableExtraction(unittest.TestCase):
 
     def setUp(self):
         self.abigail_html = (FIXTURES_DIR / "eclass_abigail_normal.html").read_text(encoding="utf-8")
-        self.raw_items = ReferenceScraperOracle.parse_table_items(self.abigail_html)
+        parser = SimpleDOMParser()
+        parser.feed(self.abigail_html)
+        self.raw_items = parse_homework_table_rows(parser.tables)
 
     def test_extracts_correct_number_of_raw_rows(self):
         """Table extraction finds all valid rows in the fixture."""
@@ -303,7 +226,8 @@ class TestFeature16OralQuizFullDetailFetch(unittest.TestCase):
 
     def setUp(self):
         self.abigail_html = (FIXTURES_DIR / "eclass_abigail_normal.html").read_text(encoding="utf-8")
-        self.items = ReferenceScraperOracle.parse_table_items(self.abigail_html)
+        res = parse_homework_html(self.abigail_html, "li-yue", today=MACAU_TODAY)
+        self.items = res["due_today"] + res["due_soon"] + res["tests_this_week"] + res["other"]
 
     def test_quiz_item_extracts_detail_content(self):
         """Quiz 1 on 17/9 extracts the full syllabus detail string."""
@@ -340,8 +264,11 @@ class TestFeature17AbigailAdvancedExclusion(unittest.TestCase):
 
     def setUp(self):
         self.abigail_html = (FIXTURES_DIR / "eclass_abigail_normal.html").read_text(encoding="utf-8")
-        self.raw_items = ReferenceScraperOracle.parse_table_items(self.abigail_html)
-        self.filtered = ReferenceScraperOracle.filter_abigail_items(self.raw_items)
+        parser = SimpleDOMParser()
+        parser.feed(self.abigail_html)
+        self.raw_items = parse_homework_table_rows(parser.tables)
+        buckets = filter_and_categorize(self.raw_items, "li-yue", today=MACAU_TODAY)
+        self.filtered = buckets["due_today"] + buckets["due_soon"] + buckets["tests_this_week"] + buckets["other"]
 
     def test_advanced_math_excluded(self):
         """Subject '進階數學' must be 100% excluded for Abigail."""
@@ -377,7 +304,9 @@ class TestFeature18GloriaP1Bypass(unittest.TestCase):
 
     def setUp(self):
         self.gloria_html = (FIXTURES_DIR / "eclass_gloria_normal.html").read_text(encoding="utf-8")
-        self.items = ReferenceScraperOracle.parse_table_items(self.gloria_html)
+        res = parse_homework_html(self.gloria_html, "li-xin", today=MACAU_TODAY)
+        self.res = res
+        self.items = res["due_today"] + res["due_soon"] + res["tests_this_week"] + res["other"]
 
     def test_all_gloria_subjects_retained(self):
         """Gloria has no advanced stream filtering; all parsed items are kept."""
@@ -390,8 +319,7 @@ class TestFeature18GloriaP1Bypass(unittest.TestCase):
 
     def test_gloria_profile_name_verification(self):
         """Student identity must strictly verify as '李昕'."""
-        name = ReferenceScraperOracle.parse_profile_name(self.gloria_html)
-        self.assertEqual(name, "李昕")
+        self.assertEqual(self.res["student_name"], "李昕")
 
     def test_rules_json_declares_p1_bypass(self):
         """status.json rules explicitly flag li_xin_has_no_advanced_track: true."""
@@ -409,7 +337,8 @@ class TestFeature19NonSubmissionTaskInclusion(unittest.TestCase):
 
     def setUp(self):
         self.abigail_html = (FIXTURES_DIR / "eclass_abigail_normal.html").read_text(encoding="utf-8")
-        self.items = ReferenceScraperOracle.parse_table_items(self.abigail_html)
+        res = parse_homework_html(self.abigail_html, "li-yue", today=MACAU_TODAY)
+        self.items = res["due_today"] + res["due_soon"] + res["tests_this_week"] + res["other"]
 
     def test_non_submission_item_is_included(self):
         """Tasks marked '不須繳交' are NOT discarded."""
@@ -423,9 +352,9 @@ class TestFeature19NonSubmissionTaskInclusion(unittest.TestCase):
 
     def test_gloria_listening_quiz_is_non_submission(self):
         """Gloria's listening quiz '不用串字' has submit_required == False."""
-        gloria_items = ReferenceScraperOracle.parse_table_items(
-            (FIXTURES_DIR / "eclass_gloria_normal.html").read_text(encoding="utf-8")
-        )
+        gloria_html = (FIXTURES_DIR / "eclass_gloria_normal.html").read_text(encoding="utf-8")
+        gloria_res = parse_homework_html(gloria_html, "li-xin", today=MACAU_TODAY)
+        gloria_items = gloria_res["due_today"] + gloria_res["due_soon"] + gloria_res["tests_this_week"] + gloria_res["other"]
         listening_item = next(it for it in gloria_items if "Quiz Listening" in it["title"])
         self.assertFalse(listening_item["submit_required"])
 
@@ -446,24 +375,24 @@ class TestFeature20DueDateCanonicalization(unittest.TestCase):
 
     def test_iso_date_passes_unchanged(self):
         """YYYY-MM-DD remains unchanged."""
-        self.assertEqual(ReferenceScraperOracle.canonicalize_date("2026-09-15"), "2026-09-15")
+        self.assertEqual(canonicalize_date("2026-09-15"), "2026-09-15")
 
     def test_slash_separated_date_normalized(self):
         """2026/09/15 -> 2026-09-15."""
-        self.assertEqual(ReferenceScraperOracle.canonicalize_date("2026/09/15"), "2026-09-15")
+        self.assertEqual(canonicalize_date("2026/09/15"), "2026-09-15")
 
     def test_chinese_month_day_normalized(self):
         """9月15日 with default year 2026 -> 2026-09-15."""
-        self.assertEqual(ReferenceScraperOracle.canonicalize_date("9月15日", 2026), "2026-09-15")
+        self.assertEqual(canonicalize_date("9月15日", default_year=2026), "2026-09-15")
 
     def test_single_digit_month_day_padded_with_zero(self):
         """2026/9/5 -> 2026-09-05."""
-        self.assertEqual(ReferenceScraperOracle.canonicalize_date("2026/9/5"), "2026-09-05")
+        self.assertEqual(canonicalize_date("2026/9/5"), "2026-09-05")
 
     def test_invalid_date_raises_value_error(self):
         """Unparseable garbage date raises ValueError."""
         with self.assertRaises(ValueError):
-            ReferenceScraperOracle.canonicalize_date("INVALID_DATE")
+            canonicalize_date("INVALID_DATE")
 
 
 class TestFeature21FourSectionDateCategorization(unittest.TestCase):
@@ -471,9 +400,8 @@ class TestFeature21FourSectionDateCategorization(unittest.TestCase):
 
     def setUp(self):
         self.abigail_html = (FIXTURES_DIR / "eclass_abigail_normal.html").read_text(encoding="utf-8")
-        raw = ReferenceScraperOracle.parse_table_items(self.abigail_html)
-        filtered = ReferenceScraperOracle.filter_abigail_items(raw)
-        self.sections = ReferenceScraperOracle.categorize_items(filtered, MACAU_TODAY)
+        res = parse_homework_html(self.abigail_html, "li-yue", today=MACAU_TODAY)
+        self.sections = res["items"]
 
     def test_due_today_contains_same_day_tasks(self):
         """Tasks with due <= 2026-09-15 go to due_today."""
@@ -515,7 +443,7 @@ class TestFeature22OfflineHTMLTestFixtures(unittest.TestCase):
             "eclass_gloria_normal.html",
             "eclass_empty.html",
             "eclass_login_required.html",
-            "eclass_wrong_student.html"
+            "eclass_wrong_student.html",
         ]
         for name in expected_fixtures:
             path = FIXTURES_DIR / name
@@ -525,13 +453,14 @@ class TestFeature22OfflineHTMLTestFixtures(unittest.TestCase):
         """Abigail fixture contains table and rows."""
         content = (FIXTURES_DIR / "eclass_abigail_normal.html").read_text(encoding="utf-8")
         self.assertIn("<table", content)
-        self.assertIn("class=\"homework-table\"", content)
+        self.assertIn('class="homework-table"', content)
 
     def test_empty_fixture_contains_zero_homework_rows(self):
         """Empty fixture contains no homework rows."""
         content = (FIXTURES_DIR / "eclass_empty.html").read_text(encoding="utf-8")
-        items = ReferenceScraperOracle.parse_table_items(content)
-        self.assertEqual(len(items), 0)
+        res = parse_homework_html(content, "li-yue", today=MACAU_TODAY)
+        total = sum(len(v) for v in res["items"].values())
+        self.assertEqual(total, 0)
 
     def test_fixtures_use_utf8_encoding(self):
         """Fixtures read cleanly with utf-8 without character corruption."""

@@ -304,8 +304,8 @@ class TestFeature07ChildZeroTypingPairing(unittest.TestCase):
         self.assertTrue(CODE_PATTERN.match(code))
 
     def test_parse_sync_param_from_alternative_keys(self):
-        """Extract sync code from 'familyCode' or 'code' parameters."""
-        for key in ["familyCode", "code"]:
+        """Extract sync code from 'familyCode', 'familyId', or 'code' parameters."""
+        for key in ["familyCode", "familyId", "code"]:
             qs = f"?{key}=23456789ABCDEFGHJKMN"
             params = urllib.parse.parse_qs(qs.lstrip("?"))
             code = normalize_code(params.get(key, [""])[0])

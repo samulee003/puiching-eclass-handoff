@@ -18,6 +18,8 @@ import html
 import json
 import pathlib
 import re
+import subprocess
+import sys
 import unittest
 import urllib.parse
 
@@ -44,10 +46,12 @@ class TestTier2EmptyTablesAndSections(unittest.TestCase):
 
     def test_empty_fixture_parses_to_empty_items(self):
         """Parsing an eClass page with zero items yields an empty list, not an error."""
+        from scripts.scrape_eclass import parse_homework_html
+
         empty_html = (FIXTURES_DIR / "eclass_empty.html").read_text(encoding="utf-8")
-        rows = re.findall(r"<tr[^>]*>(.*?)</tr>", empty_html, re.DOTALL)
-        hw_rows = [r for r in rows if "<th" not in r and "<td" in r]
-        self.assertEqual(len(hw_rows), 0)
+        res = parse_homework_html(empty_html, "li-yue")
+        total = sum(len(v) for v in res["items"].values())
+        self.assertEqual(total, 0)
 
     def test_status_json_accepts_empty_due_today(self):
         """status.json allows due_today to be an empty list (as in Gloria's real state)."""
@@ -120,13 +124,21 @@ class TestTier2ExpiredSessionsAndAuthErrors(unittest.TestCase):
 
     def test_detect_html_login_form_action(self):
         """Page containing login form action='/templates/login.php' is detected as login page."""
+        from scripts.scrape_eclass import LoginRequiredError, parse_homework_html
+
         html_doc = (FIXTURES_DIR / "eclass_login_required.html").read_text(encoding="utf-8")
-        self.assertIn("login.php", html_doc)
+        with self.assertRaises(LoginRequiredError) as ctx:
+            parse_homework_html(html_doc, "li-yue")
+        self.assertIn("LOGIN_REQUIRED", str(ctx.exception))
 
     def test_detect_session_timeout_alert_box(self):
         """Alert box containing timeout message triggers LOGIN_REQUIRED."""
+        from scripts.scrape_eclass import LoginRequiredError, parse_homework_html
+
         html_doc = (FIXTURES_DIR / "eclass_login_required.html").read_text(encoding="utf-8")
-        self.assertIn("登入逾時", html_doc)
+        with self.assertRaises(LoginRequiredError) as ctx:
+            parse_homework_html(html_doc, "li-yue")
+        self.assertIn("LOGIN_REQUIRED", str(ctx.exception))
 
     def test_http_401_or_403_raises_explicit_login_required(self):
         """HTTP 401 or 403 status returns LOGIN_REQUIRED status code/message."""
@@ -302,6 +314,339 @@ class TestTier2AdversarialEncodingAndSpecialCharacters(unittest.TestCase):
         self.assertTrue(len(item["title"]) > 200)
         dumped = json.dumps(item, ensure_ascii=False)
         self.assertIn("長標題", dumped)
+
+
+class TestAdversarialChallengeIter2_1(unittest.TestCase):
+    """Adversarial Challenge Suite for Scraper Edge Cases and sync.js Parameter Handling (Iteration 2)."""
+
+    def setUp(self):
+        self.fixtures_dir = FIXTURES_DIR
+        self.scraper_script = ROOT / "scripts" / "scrape_eclass.py"
+        self.schema = json.loads(SCHEMA_JSON.read_text(encoding="utf-8"))
+
+    # --- 1. Scraper Session Timeout & Login Required Fixture ---
+
+    def test_login_required_fixture_raises_login_required_error(self):
+        """Scraper raises LoginRequiredError on eclass_login_required.html with LOGIN_REQUIRED token."""
+        from scripts.scrape_eclass import LoginRequiredError, parse_homework_html
+
+        html_doc = (self.fixtures_dir / "eclass_login_required.html").read_text(encoding="utf-8")
+        with self.assertRaises(LoginRequiredError) as ctx:
+            parse_homework_html(html_doc, "li-yue")
+        self.assertIn("LOGIN_REQUIRED", str(ctx.exception))
+
+    def test_login_required_cli_exit_code_and_stderr(self):
+        """Executing scripts/scrape_eclass.py via CLI on login_required fixture exits 1 and emits LOGIN_REQUIRED."""
+        cmd = [
+            sys.executable,
+            str(self.scraper_script),
+            "--child",
+            "li-yue",
+            "--fixture",
+            str(self.fixtures_dir / "eclass_login_required.html"),
+        ]
+        proc = subprocess.run(cmd, capture_output=True, text=True)
+        self.assertEqual(proc.returncode, 1, f"Expected exit code 1, got {proc.returncode}")
+        self.assertIn("LOGIN_REQUIRED", proc.stderr)
+
+    def test_adversarial_session_timeout_with_residual_student_name(self):
+        """Page containing both residual student name '李悅' and session timeout alert must raise LoginRequiredError."""
+        from scripts.scrape_eclass import LoginRequiredError, parse_homework_html
+
+        adversarial_html = """
+        <!DOCTYPE html>
+        <html>
+        <body>
+          <div class="user-profile"><span>李悅</span></div>
+          <div class="alert">登入逾時，請重新輸入帳號密碼</div>
+        </body>
+        </html>
+        """
+        with self.assertRaises(LoginRequiredError) as ctx:
+            parse_homework_html(adversarial_html, "li-yue")
+        self.assertIn("LOGIN_REQUIRED", str(ctx.exception))
+
+    def test_adversarial_login_form_without_failure_text_raises_login_required(self):
+        """Page containing login form action and inputs without student profile must raise LoginRequiredError."""
+        from scripts.scrape_eclass import LoginRequiredError, parse_homework_html
+
+        login_form_html = """
+        <html>
+        <body>
+          <form action="/templates/login.php" method="POST">
+            <input type="text" name="user_name" />
+            <input type="password" name="user_password" />
+            <button type="submit">登入</button>
+          </form>
+        </body>
+        </html>
+        """
+        with self.assertRaises(LoginRequiredError) as ctx:
+            parse_homework_html(login_form_html, "li-yue")
+        self.assertIn("LOGIN_REQUIRED", str(ctx.exception))
+
+    # --- 2. Scraper Wrong Student & Profile Verification ---
+
+    def test_wrong_student_fixture_raises_identity_mismatch_error(self):
+        """Scraper raises IdentityMismatchError on eclass_wrong_student.html."""
+        from scripts.scrape_eclass import IdentityMismatchError, parse_homework_html
+
+        html_doc = (self.fixtures_dir / "eclass_wrong_student.html").read_text(encoding="utf-8")
+        with self.assertRaises(IdentityMismatchError) as ctx:
+            parse_homework_html(html_doc, "li-yue")
+        self.assertIn("IDENTITY_MISMATCH", str(ctx.exception))
+
+    def test_wrong_student_cli_exit_code_and_stderr(self):
+        """Executing scripts/scrape_eclass.py on wrong student fixture exits 1 and emits IDENTITY_MISMATCH."""
+        cmd = [
+            sys.executable,
+            str(self.scraper_script),
+            "--child",
+            "li-yue",
+            "--fixture",
+            str(self.fixtures_dir / "eclass_wrong_student.html"),
+        ]
+        proc = subprocess.run(cmd, capture_output=True, text=True)
+        self.assertEqual(proc.returncode, 1, f"Expected exit code 1, got {proc.returncode}")
+        self.assertIn("IDENTITY_MISMATCH", proc.stderr)
+
+    def test_adversarial_sibling_profile_mismatch_detection(self):
+        """When Gloria '李昕' is found instead of requested Abigail 'li-yue', IdentityMismatchError details discrepancy."""
+        from scripts.scrape_eclass import IdentityMismatchError, parse_homework_html
+
+        gloria_html = (self.fixtures_dir / "eclass_gloria_normal.html").read_text(encoding="utf-8")
+        with self.assertRaises(IdentityMismatchError) as ctx:
+            parse_homework_html(gloria_html, "li-yue")
+        err_msg = str(ctx.exception)
+        self.assertIn("IDENTITY_MISMATCH", err_msg)
+        self.assertIn("李悅", err_msg)
+        self.assertIn("李昕", err_msg)
+
+    # --- 3. Normal Fixtures Parsing & Filtering Rules ---
+
+    def test_abigail_normal_fixture_strict_advanced_exclusion(self):
+        """Abigail fixture must 100% exclude '進階' subjects and preserve regular subjects cleanly."""
+        import jsonschema
+        from scripts.scrape_eclass import parse_homework_html
+
+        abigail_html = (self.fixtures_dir / "eclass_abigail_normal.html").read_text(encoding="utf-8")
+        result = parse_homework_html(abigail_html, "li-yue", today=datetime.date(2026, 9, 15))
+
+        self.assertEqual(result["child_id"], "li-yue")
+        self.assertEqual(result["student_name"], "李悅")
+
+        all_items = (
+            result["due_today"]
+            + result["due_soon"]
+            + result["tests_this_week"]
+            + result["other"]
+        )
+        self.assertEqual(len(all_items), 6, "Expected exactly 6 items after excluding 2 advanced subjects")
+
+        # 100% exclusion verification
+        for item in all_items:
+            self.assertNotIn("進階", item["subject"], f"Advanced subject not excluded: {item['subject']}")
+
+        # Validate conformance of all items against status.schema.json
+        item_validator = jsonschema.Draft7Validator(self.schema["definitions"]["item"])
+        for item in all_items:
+            item_validator.validate(item)
+
+        # Oral/Quiz full detail verification
+        quiz_item = next(it for it in all_items if "Quiz 1" in it["title"])
+        self.assertIn("detail", quiz_item)
+        self.assertIn("Present Simple", quiz_item["detail"])
+        self.assertIn("Reading Comprehension", quiz_item["detail"])
+
+        oral_item = next(it for it in all_items if "口試" in it["title"])
+        self.assertIn("detail", oral_item)
+        self.assertIn("3分鐘內", oral_item["detail"])
+        self.assertIn("繪本／改編／自創", oral_item["detail"])
+
+        # Regular item has no detail
+        reg_item = next(it for it in all_items if "第3課習作" in it["title"])
+        self.assertNotIn("detail", reg_item)
+
+    def test_gloria_normal_fixture_retains_all_subjects(self):
+        """Gloria normal fixture retains all subjects without advanced stream exclusion."""
+        import jsonschema
+        from scripts.scrape_eclass import parse_homework_html
+
+        gloria_html = (self.fixtures_dir / "eclass_gloria_normal.html").read_text(encoding="utf-8")
+        result = parse_homework_html(gloria_html, "li-xin", today=datetime.date(2026, 9, 15))
+
+        self.assertEqual(result["child_id"], "li-xin")
+        self.assertEqual(result["student_name"], "李昕")
+
+        all_items = (
+            result["due_today"]
+            + result["due_soon"]
+            + result["tests_this_week"]
+            + result["other"]
+        )
+        self.assertEqual(len(all_items), 4, "Gloria must retain all 4 items")
+
+        item_validator = jsonschema.Draft7Validator(self.schema["definitions"]["item"])
+        for item in all_items:
+            item_validator.validate(item)
+
+    def test_adversarial_abigail_advanced_subject_variants(self):
+        """Abigail filtering drops any subject variant containing '進階', but retains normal subjects."""
+        from scripts.scrape_eclass import filter_and_categorize
+
+        raw_items = [
+            {"subject": "數學(進階)", "title": "難題集", "due": "2026-09-15", "submit_required": True},
+            {"subject": "中文進階班", "title": "作文", "due": "2026-09-15", "submit_required": True},
+            {"subject": "進階常識", "title": "專題", "due": "2026-09-15", "submit_required": True},
+            {"subject": "數學", "title": "常規計算", "due": "2026-09-15", "submit_required": True},
+            {"subject": "中文", "title": "常規背誦", "due": "2026-09-15", "submit_required": True},
+        ]
+        buckets = filter_and_categorize(raw_items, "li-yue", today=datetime.date(2026, 9, 15))
+        filtered = buckets["due_today"] + buckets["due_soon"] + buckets["tests_this_week"] + buckets["other"]
+        self.assertEqual(len(filtered), 2)
+        filtered_subjects = [it["subject"] for it in filtered]
+        self.assertEqual(filtered_subjects, ["中文", "數學"])
+
+    def test_adversarial_oral_quiz_fallback_detail(self):
+        """Oral/Quiz items missing detail text provide explicit fallback '詳情未取到'."""
+        from scripts.scrape_eclass import filter_and_categorize
+
+        raw_items = [
+            {"subject": "英文", "title": "English Oral Exam Chapter 1", "due": "2026-09-20", "submit_required": True}
+        ]
+        buckets = filter_and_categorize(raw_items, "li-yue", today=datetime.date(2026, 9, 15))
+        # Due 2026-09-20 is 5 days away from 2026-09-15 and contains 'Oral', so it lands in tests_this_week
+        item = buckets["tests_this_week"][0]
+        self.assertEqual(item.get("detail"), "詳情未取到")
+
+    # --- 4. sync.js URL Parameter Extraction & Sanitization ---
+
+    def _simulate_sync_js_url_extraction(self, search: str, hash_str: str):
+        """Simulate sync.js extractSyncCodeFromUrl logic (lines 756-773)."""
+        re_extract_search = re.compile(r"[?&](?:sync|familyCode|familyId|code)=([A-Za-z0-9-]+)", re.I)
+        re_extract_hash = re.compile(r"[#&](?:sync|familyCode|familyId|code)=([A-Za-z0-9-]+)", re.I)
+
+        m_search = re_extract_search.search(search)
+        m_hash = re_extract_hash.search(hash_str)
+        match = m_search or m_hash
+        if not match:
+            return None, search, hash_str
+
+        raw = match.group(1)
+        norm = normalize_code(raw)
+        if not CODE_PATTERN.match(norm):
+            return None, search, hash_str
+
+        # Address bar sanitization simulation
+        def repl_search(m):
+            p1 = m.group(1)
+            p2 = m.group(2)
+            return p1 if p2 else ""
+
+        clean_search = re.sub(
+            r"([?&])(?:sync|familyCode|familyId|code)=[^&]*(&|$)",
+            repl_search,
+            search,
+            flags=re.I,
+        )
+        clean_search = re.sub(r"[?&]$", "", clean_search)
+
+        def repl_hash(m):
+            p1 = m.group(1)
+            p2 = m.group(2)
+            return p1 if p2 else ""
+
+        clean_hash = re.sub(
+            r"([#&])(?:sync|familyCode|familyId|code)=[^&]*(&|$)",
+            repl_hash,
+            hash_str,
+            flags=re.I,
+        )
+        clean_hash = re.sub(r"[#&]$", "", clean_hash)
+
+        return norm, clean_search, clean_hash
+
+    def test_sync_js_family_id_query_parameter_parsing(self):
+        """?familyId= parameter is properly extracted and normalized."""
+        code, clean_s, clean_h = self._simulate_sync_js_url_extraction(
+            "?familyId=2345-6789-ABCD-EFGH-JKMN", ""
+        )
+        self.assertEqual(code, "23456789ABCDEFGHJKMN")
+        self.assertEqual(clean_s, "")
+
+    def test_sync_js_hash_parameter_parsing(self):
+        """#familyId= and #sync= hash fragments are extracted and sanitized."""
+        code1, clean_s1, clean_h1 = self._simulate_sync_js_url_extraction(
+            "", "#familyId=2345-6789-ABCD-EFGH-JKMN"
+        )
+        self.assertEqual(code1, "23456789ABCDEFGHJKMN")
+        self.assertEqual(clean_h1, "")
+
+        code2, clean_s2, clean_h2 = self._simulate_sync_js_url_extraction(
+            "", "#sync=2345-6789-ABCD-EFGH-JKMN"
+        )
+        self.assertEqual(code2, "23456789ABCDEFGHJKMN")
+        self.assertEqual(clean_h2, "")
+
+    def test_sync_js_address_bar_sanitization_multi_param(self):
+        """Address bar sanitization removes sync parameter while preserving unrelated params."""
+        # Case A: middle param
+        c_a, s_a, _ = self._simulate_sync_js_url_extraction(
+            "?foo=bar&familyId=23456789ABCDEFGHJKMN&baz=qux", ""
+        )
+        self.assertEqual(c_a, "23456789ABCDEFGHJKMN")
+        self.assertEqual(s_a, "?foo=bar&baz=qux")
+
+        # Case B: first param with trailing params
+        c_b, s_b, _ = self._simulate_sync_js_url_extraction(
+            "?familyId=23456789ABCDEFGHJKMN&baz=qux", ""
+        )
+        self.assertEqual(c_b, "23456789ABCDEFGHJKMN")
+        self.assertEqual(s_b, "?baz=qux")
+
+        # Case C: last param
+        c_c, s_c, _ = self._simulate_sync_js_url_extraction(
+            "?foo=bar&familyId=23456789ABCDEFGHJKMN", ""
+        )
+        self.assertEqual(c_c, "23456789ABCDEFGHJKMN")
+        self.assertEqual(s_c, "?foo=bar")
+
+        # Case D: hash with other params
+        c_d, _, h_d = self._simulate_sync_js_url_extraction(
+            "", "#section=top&familyId=23456789ABCDEFGHJKMN&view=full"
+        )
+        self.assertEqual(c_d, "23456789ABCDEFGHJKMN")
+        self.assertEqual(h_d, "#section=top&view=full")
+
+    def test_sync_js_lookalike_character_rejection(self):
+        """sync.js strictly rejects invalid Base32 codes containing 0, O, 1, I, L."""
+        lookalikes = ["0", "O", "1", "I", "L"]
+        for ch in lookalikes:
+            bad_code = "23456789ABCDEFGHJKM" + ch
+            extracted, _, _ = self._simulate_sync_js_url_extraction(f"?familyId={bad_code}", "")
+            self.assertIsNone(extracted, f"Code with lookalike character {ch!r} should return null")
+
+    def test_sync_js_adversarial_malformed_url_inputs(self):
+        """Adversarial/malicious URL parameters return null and do not crash."""
+        adversarial_inputs = [
+            "?familyId=<script>alert('xss')</script>",
+            "?familyId=../../etc/passwd",
+            "?familyId='; DROP TABLE users; --",
+            "?familyId=INVALID_SHORT_CODE",
+            "?familyId=TOOLONGCODE23456789ABCDEFGHJKMN12345",
+            "?familyId=",
+        ]
+        for adv in adversarial_inputs:
+            extracted, _, _ = self._simulate_sync_js_url_extraction(adv, "")
+            self.assertIsNone(extracted, f"Adversarial input {adv!r} should return null")
+
+    def test_sync_js_sanitizes_trailing_percent_encoding_cleanly(self):
+        """Address bar sanitization strips parameter containing encoded bytes completely."""
+        code, clean_s, _ = self._simulate_sync_js_url_extraction(
+            "?familyId=23456789ABCDEFGHJKMN%00&keep=1", ""
+        )
+        self.assertEqual(code, "23456789ABCDEFGHJKMN")
+        self.assertEqual(clean_s, "?keep=1")
 
 
 if __name__ == "__main__":

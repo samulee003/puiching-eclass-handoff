@@ -94,73 +94,97 @@ class TestTier3ScraperToDualWritePipeline(unittest.TestCase):
     """Pipeline 2: Scraper -> Filtering -> Dual-Writer -> Compliance Gate."""
 
     def test_end_to_end_scraper_dual_write_and_validation(self):
-        """Parse fixtures, filter rules, update status.json & DASHBOARD.md, validate."""
-        # Step 1: Scrape Abigail fixture
-        abigail_html = (FIXTURES_DIR / "eclass_abigail_normal.html").read_text(encoding="utf-8")
-        rows = re.findall(r"<tr[^>]*>(.*?)</tr>", abigail_html, re.DOTALL)
-        abigail_raw_items = []
-        for r in rows:
-            if "<th" in r:
-                continue
-            tds = [re.sub(r"<[^>]+>", "", c).strip() for c in re.findall(r"<td[^>]*>(.*?)</td>", r, re.DOTALL)]
-            if len(tds) >= 4:
-                abigail_raw_items.append({
-                    "subject": tds[0],
-                    "title": tds[1],
-                    "due": tds[2],
-                    "submit_required": ("不" not in tds[3])
-                })
+        """Execute full production pipeline: scrape_eclass -> update_child_status -> validation."""
+        import shutil
+        import tempfile
+        import jsonschema
+        from scripts.scrape_eclass import scrape_eclass
+        from scripts.update_status import update_child_status
 
-        # Step 2: Rule filtering for Abigail (100% exclude '進階')
-        abigail_filtered = [it for it in abigail_raw_items if "進階" not in it["subject"]]
-        self.assertTrue(any("進階" in it["subject"] for it in abigail_raw_items))
-        self.assertFalse(any("進階" in it["subject"] for it in abigail_filtered))
+        with tempfile.TemporaryDirectory() as tmpdir:
+            temp_status = pathlib.Path(tmpdir) / "status.json"
+            temp_dashboard = pathlib.Path(tmpdir) / "DASHBOARD.md"
+            shutil.copy(STATUS_JSON, temp_status)
+            shutil.copy(DASHBOARD_MD, temp_dashboard)
 
-        # Step 3: Load existing status.json as baseline
-        baseline = json.loads(STATUS_JSON.read_text(encoding="utf-8"))
-        original_rewards = copy.deepcopy(baseline["rewards"])
-        original_rules = copy.deepcopy(baseline["rules"])
+            # Baseline non-homework state
+            baseline = json.loads(temp_status.read_text(encoding="utf-8"))
+            original_rewards = copy.deepcopy(baseline["rewards"])
+            original_rules = copy.deepcopy(baseline["rules"])
 
-        # Step 4: Categorize Abigail items into 4 sections
-        categorized = {"due_today": [], "due_soon": [], "tests_this_week": [], "other": []}
-        for it in abigail_filtered:
-            due_d = datetime.date.fromisoformat(it["due"])
-            if "Quiz" in it["title"] or "口試" in it["title"]:
-                categorized["tests_this_week"].append(it)
-            elif due_d <= MACAU_REF_DATE:
-                categorized["due_today"].append(it)
-            elif due_d <= MACAU_REF_DATE + datetime.timedelta(days=7):
-                categorized["due_soon"].append(it)
-            else:
-                categorized["other"].append(it)
+            # Step 1: Production Scraper executes on Abigail fixture
+            abigail_data = scrape_eclass(
+                "li-yue",
+                fixture_path=str(FIXTURES_DIR / "eclass_abigail_normal.html"),
+                today=MACAU_REF_DATE,
+            )
+            self.assertEqual(abigail_data["student_name"], "李悅")
+            all_abigail = (
+                abigail_data["due_today"]
+                + abigail_data["due_soon"]
+                + abigail_data["tests_this_week"]
+                + abigail_data["other"]
+            )
+            # Abigail filtering rule: 100% exclusion of '進階'
+            self.assertTrue(all("進階" not in it["subject"] for it in all_abigail))
+            self.assertEqual(len(all_abigail), 6)
 
-        # Step 5: Merge into updated status data
-        merged_status = copy.deepcopy(baseline)
-        target_child = next(c for c in merged_status["children"] if c["id"] == "li-yue")
-        for sec, items in categorized.items():
-            target_child[sec] = items
-        merged_status["updated_at"] = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+            # Step 2: Production Dual-Writer updates status.json & DASHBOARD.md
+            update_child_status(
+                "li-yue",
+                abigail_data,
+                status_path=temp_status,
+                dashboard_path=temp_dashboard,
+                validate=True,
+            )
 
-        # Step 6: Verify non-homework state preservation
-        self.assertEqual(merged_status["rewards"], original_rewards)
-        self.assertEqual(merged_status["rules"], original_rules)
+            # Step 3: Production Scraper executes on Gloria fixture
+            gloria_data = scrape_eclass(
+                "li-xin",
+                fixture_path=str(FIXTURES_DIR / "eclass_gloria_normal.html"),
+                today=MACAU_REF_DATE,
+            )
+            self.assertEqual(gloria_data["student_name"], "李昕")
+            all_gloria = (
+                gloria_data["due_today"]
+                + gloria_data["due_soon"]
+                + gloria_data["tests_this_week"]
+                + gloria_data["other"]
+            )
+            self.assertEqual(len(all_gloria), 4)
 
-        # Step 7: Validate against Draft-7 schema and semantic rules
-        schema = json.loads(SCHEMA_JSON.read_text(encoding="utf-8"))
-        try:
-            import jsonschema
+            # Step 4: Production Dual-Writer updates Gloria
+            update_child_status(
+                "li-xin",
+                gloria_data,
+                status_path=temp_status,
+                dashboard_path=temp_dashboard,
+                validate=True,
+            )
+
+            # Step 5: Verify non-homework metadata preservation
+            merged_status = json.loads(temp_status.read_text(encoding="utf-8"))
+            self.assertEqual(merged_status["rewards"], original_rewards)
+            self.assertEqual(merged_status["rules"], original_rules)
+
+            # Step 6: Validate against Draft-7 JSON schema
+            schema = json.loads(SCHEMA_JSON.read_text(encoding="utf-8"))
             validator = jsonschema.Draft7Validator(schema)
             errors = list(validator.iter_errors(merged_status))
             self.assertEqual(len(errors), 0, f"Schema validation errors: {errors}")
-        except ImportError:
-            pass
 
-        # Step 8: Verify all due dates are parseable
-        for child in merged_status["children"]:
-            for sec in ["due_today", "due_soon", "tests_this_week", "other"]:
-                for it in child.get(sec, []):
-                    d = datetime.date.fromisoformat(it["due"])
-                    self.assertIsInstance(d, datetime.date)
+            # Step 7: Verify all due dates are parseable real dates
+            for child in merged_status["children"]:
+                for sec in ["due_today", "due_soon", "tests_this_week", "other"]:
+                    for it in child.get(sec, []):
+                        d = datetime.date.fromisoformat(it["due"])
+                        self.assertIsInstance(d, datetime.date)
+
+            # Step 8: Verify DASHBOARD.md contains synchronized items and preserved sections
+            md_content = temp_dashboard.read_text(encoding="utf-8")
+            self.assertIn("## 李悅（Abigail／P3）", md_content)
+            self.assertIn("## 李昕（Gloria／P1）", md_content)
+            self.assertIn("## 閉環", md_content)
 
 
 class TestTier3MultiChildStateIsolation(unittest.TestCase):

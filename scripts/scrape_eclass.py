@@ -59,6 +59,7 @@ LOGIN_FAILURE_INDICATORS = (
     "登入逾時",
     "請先登入",
     "未登入",
+    "使用者未登入",
     "重新輸入帳號密碼",
     "用戶名稱或密碼不正確",
     "invalid username or password",
@@ -66,7 +67,6 @@ LOGIN_FAILURE_INDICATORS = (
     "session timeout",
     "session expired",
     "請重新登入",
-    "login.php",
 )
 
 
@@ -92,7 +92,7 @@ def get_macau_today() -> datetime.date:
         return datetime.datetime.now(tz_macau).date()
 
 
-def canonicalize_date(date_str: str) -> str:
+def canonicalize_date(date_str: str, default_year: Optional[int] = None) -> str:
     """Normalize various date formats to YYYY-MM-DD."""
     date_str = date_str.strip()
     # Match YYYY-MM-DD or YYYY/MM/DD
@@ -107,10 +107,17 @@ def canonicalize_date(date_str: str) -> str:
         d, m, y = int(m2.group(1)), int(m2.group(2)), int(m2.group(3))
         return datetime.date(y, m, d).isoformat()
 
-    # Match Chinese format: YYYY年M月D日
+    # Match Chinese format with year: YYYY年M月D日
     m3 = re.search(r"(\d{4})年(\d{1,2})月(\d{1,2})日", date_str)
     if m3:
         y, m, d = int(m3.group(1)), int(m3.group(2)), int(m3.group(3))
+        return datetime.date(y, m, d).isoformat()
+
+    # Match Chinese format without year: M月D日
+    m4 = re.search(r"^(\d{1,2})月(\d{1,2})日$", date_str)
+    if m4:
+        y = default_year if default_year is not None else get_macau_today().year
+        m, d = int(m4.group(1)), int(m4.group(2))
         return datetime.date(y, m, d).isoformat()
 
     raise ValueError(f"Unable to parse date string: {date_str!r}")
@@ -125,6 +132,8 @@ class SimpleDOMParser(HTMLParser):
         self.in_tr = False
         self.in_th = False
         self.in_td = False
+        self.in_detail = False
+        self.in_btn = False
         self.current_tag = ""
         self.current_attrs: Dict[str, str] = {}
 
@@ -133,6 +142,8 @@ class SimpleDOMParser(HTMLParser):
         self.current_row_cells: List[Dict[str, Any]] = []
         self.current_row_attrs: Dict[str, str] = {}
         self.current_cell_text: List[str] = []
+        self.current_cell_note_text: List[str] = []
+        self.current_cell_detail_text: List[str] = []
         self.current_cell_attrs: Dict[str, str] = {}
         self.current_cell_is_th = False
 
@@ -158,22 +169,42 @@ class SimpleDOMParser(HTMLParser):
                 self.in_td = True
                 self.current_cell_is_th = False
             self.current_cell_text = []
+            self.current_cell_note_text = []
+            self.current_cell_detail_text = []
             self.current_cell_attrs = attr_dict
+        elif self.in_td:
+            cls = attr_dict.get("class", "").lower()
+            if "detail-content" in cls:
+                self.in_detail = True
+            elif "btn-detail" in cls:
+                self.in_btn = True
 
     def handle_endtag(self, tag: str) -> None:
         t = tag.lower()
         if t in ("th", "td") and (self.in_th or self.in_td):
             raw_text = " ".join(self.current_cell_text)
             clean_text = html.unescape(" ".join(raw_text.split())).strip()
+            clean_note = html.unescape(" ".join(" ".join(self.current_cell_note_text).split())).strip() or None
+            clean_detail = html.unescape(" ".join(" ".join(self.current_cell_detail_text).split())).strip() or None
             cell_data = {
                 "text": clean_text,
+                "note_text": clean_note,
+                "detail": clean_detail,
                 "is_th": self.current_cell_is_th,
                 "attrs": self.current_cell_attrs,
             }
             self.current_row_cells.append(cell_data)
             self.in_th = False
             self.in_td = False
+            self.in_detail = False
+            self.in_btn = False
             self.current_cell_text = []
+            self.current_cell_note_text = []
+            self.current_cell_detail_text = []
+        elif t in ("div", "span", "p") and self.in_detail:
+            self.in_detail = False
+        elif t == "a" and self.in_btn:
+            self.in_btn = False
         elif t == "tr" and self.in_tr:
             if self.current_row_cells:
                 self.current_table.append({
@@ -195,6 +226,10 @@ class SimpleDOMParser(HTMLParser):
             self.full_text_parts.append(clean)
         if self.in_th or self.in_td:
             self.current_cell_text.append(data)
+            if self.in_detail:
+                self.current_cell_detail_text.append(data)
+            elif not self.in_btn and clean != "查看詳情":
+                self.current_cell_note_text.append(data)
 
     def get_full_text(self) -> str:
         return " ".join(self.full_text_parts)
@@ -211,20 +246,13 @@ def parse_homework_table_rows(tables: List[List[Dict[str, Any]]]) -> List[Dict[s
         header_indices: Dict[str, int] = {}
         data_rows: List[Dict[str, Any]] = []
 
+        # Detect headers
         for row_obj in table:
             row_cells = row_obj.get("cells", [])
-            row_attrs = row_obj.get("attrs", {})
-
-            # Determine whether this row is a table header
-            is_header = False
-            if any(cell.get("is_th", False) for cell in row_cells):
-                is_header = True
-            elif not header_indices:
-                matching_header_kws = sum(
-                    1 for cell in row_cells
-                    if any(k in cell["text"] for k in ("科目", "標題", "項目", "截止", "繳交", "due"))
-                )
-                if matching_header_kws >= 2:
+            is_header = any(c.get("is_th") for c in row_cells)
+            if not is_header and row_cells:
+                first_text = row_cells[0].get("text", "")
+                if "科目" in first_text or "項目" in first_text:
                     is_header = True
 
             if is_header and not header_indices:
@@ -232,14 +260,14 @@ def parse_homework_table_rows(tables: List[List[Dict[str, Any]]]) -> List[Dict[s
                     txt = cell["text"]
                     if "科目" in txt:
                         header_indices["subject"] = col_idx
-                    elif any(k in txt for k in ("詳情", "detail")):
-                        header_indices["detail"] = col_idx
                     elif any(k in txt for k in ("截止", "期限", "日期", "due")):
                         header_indices["due"] = col_idx
                     elif any(k in txt for k in ("繳交", "狀態", "要求", "submit")):
                         header_indices["submit"] = col_idx
                     elif any(k in txt for k in ("備註", "說明", "note")):
                         header_indices["note"] = col_idx
+                    elif any(k in txt for k in ("詳情", "detail")):
+                        header_indices["detail"] = col_idx
                     elif any(k in txt for k in ("項目", "標題", "功課")) or ("內容" in txt and "詳情" not in txt):
                         header_indices["title"] = col_idx
             else:
@@ -267,7 +295,7 @@ def parse_homework_table_rows(tables: List[List[Dict[str, Any]]]) -> List[Dict[s
 
             item_data: Dict[str, Any] = {}
 
-            # 1. Attribute matching by cell class
+            # 1. Attribute matching by cell class and sub-fields
             for cell in cells:
                 cls = cell.get("attrs", {}).get("class", "").lower()
                 txt = cell.get("text", "")
@@ -280,9 +308,11 @@ def parse_homework_table_rows(tables: List[List[Dict[str, Any]]]) -> List[Dict[s
                 elif "submit" in cls or "status" in cls:
                     item_data["submit_raw"] = txt
                 elif "note" in cls:
-                    item_data["note"] = txt
+                    item_data["note"] = cell.get("note_text") or txt
+                    if cell.get("detail"):
+                        item_data["detail"] = cell["detail"]
                 elif "detail" in cls:
-                    item_data["detail"] = txt
+                    item_data["detail"] = cell.get("detail") or txt
 
             # 2. Attribute matching by column index
             def get_col(col_name: str) -> str:
@@ -300,9 +330,15 @@ def parse_homework_table_rows(tables: List[List[Dict[str, Any]]]) -> List[Dict[s
             if "submit_raw" not in item_data or not item_data["submit_raw"]:
                 item_data["submit_raw"] = get_col("submit")
             if "note" not in item_data or not item_data["note"]:
-                item_data["note"] = get_col("note")
+                note_col = header_indices.get("note", -1)
+                if 0 <= note_col < len(cells):
+                    item_data["note"] = cells[note_col].get("note_text") or cells[note_col]["text"]
+                    if cells[note_col].get("detail"):
+                        item_data["detail"] = cells[note_col]["detail"]
             if "detail" not in item_data or not item_data["detail"]:
-                item_data["detail"] = get_col("detail")
+                detail_col = header_indices.get("detail", -1)
+                if 0 <= detail_col < len(cells):
+                    item_data["detail"] = cells[detail_col].get("detail") or cells[detail_col]["text"]
 
             subject = item_data.get("subject", "").strip()
             title = item_data.get("title", "").strip()
@@ -367,7 +403,9 @@ def parse_homework_table_rows(tables: List[List[Dict[str, Any]]]) -> List[Dict[s
 
 
 def verify_identity_and_auth(
-    full_text: str, child_id: str
+    full_text: str,
+    child_id: str,
+    html_content: Optional[str] = None,
 ) -> Tuple[bool, str]:
     """Verify login status and child profile identity.
 
@@ -376,19 +414,30 @@ def verify_identity_and_auth(
         IdentityMismatchError: When logged-in student doesn't match requested child.
     """
     lower_text = full_text.lower()
+    raw_html_lower = (html_content or "").lower()
 
-    # Check explicit login failure indicators
+    # 1. Check explicit login failure indicators
     for indicator in LOGIN_FAILURE_INDICATORS:
-        if indicator in lower_text:
+        if indicator in lower_text or (raw_html_lower and indicator in raw_html_lower):
             raise LoginRequiredError(
                 f"LOGIN_REQUIRED: eClass session expired or authentication failed ({indicator})"
             )
 
-    # Check for login form when no student is logged in
-    if ("username" in lower_text and "password" in lower_text and "登入" in full_text) and not (
-        "李悅" in full_text or "李昕" in full_text
-    ):
-        raise LoginRequiredError("LOGIN_REQUIRED: Login page detected. Authentication required.")
+    # 2. Check for login form or login redirection when no student is logged in
+    has_student = ("李悅" in full_text or "李昕" in full_text)
+    if not has_student:
+        combined_lower = f"{lower_text} {raw_html_lower}"
+        is_login_page = (
+            "login.php" in combined_lower
+            or "/templates/login.php" in combined_lower
+            or ("user_name" in combined_lower and "user_password" in combined_lower)
+            or ("username" in combined_lower and "password" in combined_lower and "登入" in combined_lower)
+            or ('type="password"' in combined_lower or "type='password'" in combined_lower)
+            or ('name="user_password"' in combined_lower or 'name="password"' in combined_lower)
+            or ("請先登入" in combined_lower or "登入系統" in combined_lower)
+        )
+        if is_login_page:
+            raise LoginRequiredError("LOGIN_REQUIRED: Login page detected. Authentication required.")
 
     norm_child_id = child_id.lower().replace("_", "-")
     expected_meta = STUDENT_MAPPING.get(norm_child_id)
@@ -515,7 +564,9 @@ def parse_homework_html(
     parser.feed(html_content)
 
     full_text = parser.get_full_text()
-    _, verified_name = verify_identity_and_auth(full_text, child_id)
+    _, verified_name = verify_identity_and_auth(
+        full_text, child_id, html_content=html_content
+    )
 
     raw_items = parse_homework_table_rows(parser.tables)
     buckets = filter_and_categorize(raw_items, child_id, today)
@@ -713,16 +764,28 @@ def main() -> int:
             today=ref_date,
         )
     except LoginRequiredError as exc:
-        print(f"LOGIN_REQUIRED: {exc}", file=sys.stderr)
+        msg = str(exc)
+        if not msg.startswith("LOGIN_REQUIRED:"):
+            msg = f"LOGIN_REQUIRED: {msg}"
+        print(msg, file=sys.stderr)
         return 1
     except IdentityMismatchError as exc:
-        print(f"IDENTITY_MISMATCH: {exc}", file=sys.stderr)
+        msg = str(exc)
+        if not msg.startswith("IDENTITY_MISMATCH:"):
+            msg = f"IDENTITY_MISMATCH: {msg}"
+        print(msg, file=sys.stderr)
         return 1
     except EClassScrapeError as exc:
-        print(f"SCRAPE_ERROR: {exc}", file=sys.stderr)
+        msg = str(exc)
+        if not msg.startswith("SCRAPE_ERROR:"):
+            msg = f"SCRAPE_ERROR: {msg}"
+        print(msg, file=sys.stderr)
         return 1
     except Exception as exc:
-        print(f"UNEXPECTED_ERROR: {exc}", file=sys.stderr)
+        msg = str(exc)
+        if not msg.startswith("UNEXPECTED_ERROR:"):
+            msg = f"UNEXPECTED_ERROR: {msg}"
+        print(msg, file=sys.stderr)
         return 1
 
     # Output formatting
