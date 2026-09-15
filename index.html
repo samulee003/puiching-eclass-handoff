@@ -238,11 +238,18 @@
   .sync-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
   .sync-state { padding: 2px 8px; border-radius: 99px; background: #243247; color: var(--muted); font-size: 0.72rem; font-weight: 700; white-space: nowrap; }
   .sync-state.connected { background: #1a4a34; color: var(--ok); }
+  .sync-state.local { background: #243247; color: var(--muted); }
+  .sync-state.connecting { background: #3b3017; color: #f59e0b; }
+  .sync-state.offline { background: #451a1a; color: #ef4444; }
   .sync-copy, .sync-message { color: var(--muted); font-size: 0.76rem; margin-top: 4px; }
   .sync-controls { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; align-items: center; }
   .sync-controls label { color: var(--muted); font-size: 0.76rem; }
   .sync-controls input { background: #141c28; border: 1px solid var(--border); color: var(--text); border-radius: 8px; padding: 7px 9px; font-size: 0.8rem; min-width: 200px; }
   .sync-controls button { padding: 7px 9px; font-size: 0.76rem; }
+  .sync-pairing-section { margin-top: 14px; border-top: 1px dashed var(--border); padding-top: 12px; }
+  .sync-child-card { background: rgba(255,255,255,0.03); border: 1px solid var(--border); border-radius: 10px; padding: 10px; }
+  .sync-child-actions button { padding: 5px 9px; font-size: 0.76rem; border-radius: 6px; }
+  .sync-qr-container svg { display: block; margin: 0 auto; max-width: 100%; height: auto; }
 </style>
 </head>
 <body>
@@ -286,6 +293,7 @@
   </div>
   <div class="toast" id="toast"></div>
 <script src="sync-config.js"></script>
+<script src="assets/qrcode.min.js"></script>
 <script src="sync.js"></script>
 <script>
 const STORE_KEY = 'puiching-eclass-todos-v1';

@@ -6,6 +6,12 @@
 <title>李悅的功課</title>
 <meta name="description" content="李悅（Abigail）自己的功課待辦頁" />
 <link rel="stylesheet" href="assets/child.css" />
+<style>
+  .sync-state.local { background: #f1f5f9; color: #64748b; }
+  .sync-state.connecting { background: #fef3c7; color: #d97706; }
+  .sync-state.offline { background: #fee2e2; color: #ef4444; }
+  .sync-state.connected { background: #dff8ef; color: #207f69; }
+</style>
 </head>
 <body data-accent="yue">
   <div class="wrap">
@@ -45,6 +51,7 @@
 
   <script>window.CHILD_ID = 'li-yue';</script>
   <script src="sync-config.js"></script>
+  <script src="assets/qrcode.min.js"></script>
   <script src="sync.js"></script>
   <script src="assets/child.js"></script>
 </body>

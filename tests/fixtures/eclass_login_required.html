@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+  <meta charset="UTF-8">
+  <title>培正中學 eClass 系統登入</title>
+</head>
+<body>
+  <div class="login-box">
+    <h2>請先登入系統</h2>
+    <div class="alert error-message">登入逾時，或使用者未登入。請重新輸入帳號密碼。</div>
+    <form action="/templates/login.php" method="POST">
+      <input type="text" name="user_name" placeholder="帳號" />
+      <input type="password" name="user_password" placeholder="密碼" />
+      <button type="submit">登入</button>
+    </form>
+  </div>
+</body>
+</html>

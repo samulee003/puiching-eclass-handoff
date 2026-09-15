@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <title>澳門培正中學 eClass 綜合平台 - 登入</title>
+    <link rel="stylesheet" href="/templates/css/eclass_login.css">
+</head>
+<body class="login-page">
+    <div id="login-container">
+        <div class="school-header">
+            <h1>澳門培正中學 Escola Pui Ching</h1>
+            <h3>eClass 綜合資訊平台</h3>
+        </div>
+
+        <div class="alert alert-danger error-box" role="alert">
+            <span class="error-icon">⚠️</span>
+            <span class="error-msg">登入失敗：用戶名稱或密碼不正確 (Invalid username or password)。請確認您的輸入。</span>
+        </div>
+
+        <div class="alert alert-warning session-expired" role="alert">
+            <span>您的連線會話已過期 (Session Timeout)，請重新登入以繼續訪問。</span>
+        </div>
+
+        <div class="login-box">
+            <form id="loginForm" action="/templates/login.php" method="POST">
+                <div class="form-group">
+                    <label for="username">用戶名稱 (Username):</label>
+                    <input type="text" id="username" name="username" class="form-control" placeholder="請輸入帳號" required autocomplete="off">
+                </div>
+                <div class="form-group">
+                    <label for="password">密碼 (Password):</label>
+                    <input type="password" id="password" name="password" class="form-control" placeholder="請輸入密碼" required autocomplete="off">
+                </div>
+                <div class="form-group submit-group">
+                    <button type="submit" class="btn btn-primary btn-block">登入 (Login)</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="login-footer">
+            <p>若忘記密碼或無法登入，請聯絡學校資訊技術處。</p>
+            <p>&copy; 澳門培正中學 Pui Ching Middle School (Macau). All Rights Reserved.</p>
+        </div>
+    </div>
+</body>
+</html>

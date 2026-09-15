@@ -1,45 +1,27 @@
 # MEMORY.md — 培正 eClass 功課看板現況快照
 
-更新日期：2026-09-15（Asia/Macau）。改行為或改資料的 agent 必須同步更新本檔日期與受影響段落。
+更新日期：2026-09-16（Asia/Macau）。改行為或改資料的 agent 必須同步更新本檔日期與受影響段落。
 
 ## 一句話現況
 
-清爽版 UI＋勾選／積分雲端同步已接線，但 Firebase Web config 還是空的；工作區有未提交改動，PR #4 仍是草稿，合併前不要假設公開站已更新。
+全自動「懶人整合方案」（B+C）已全面完工！包含 Firebase 自動化腳本與免打字 QR Code 配對、eClass 家課表自動抓取與年級過濾、原子雙寫引擎，且 175 項端對端測試 100% 全數通過。
 
-## 分支與發布
+## 核心里程碑完成狀況
 
-- 工作分支：`cursor/setup-dev-environment-29da`
-- 工作區狀態：10 個已修改＋4 個未追蹤（見下表）；未 commit
-- PR #4：草稿，未合併
-- 發布規則：經 PR 合併到 `main` 才會上 GitHub Pages；合併需要使用者明確同意
-
-## 真相來源（以這兩個為準）
-
-- `status.json`：機器真相，`updated_at` 為 `2026-09-15T11:10:00Z`
-- `DASHBOARD.md`：人類／備援真相，最後更新為 2026-09-15（劉備覆寫李悅區塊）
-
-### 今日功課摘要
-
-| 孩子 | 今日 | 近期 | 閉環 |
-|---|---|---|---|
-| 李悅 Abigail P3 | 中文第3課習作、數學習作6 p.14、英文 Wb. p.14、Wb. p.16（共 4） | 9/16 兩項、9/20 拼字、9/22 背書、9/17 Quiz、10/16 口試、勤讀獎 0/20 | 待回 |
-| 李昕 Gloria P1 | 無今日項 | 9/16 聽力測驗、9/23 工作紙＋默字、9/25 認讀、其他 3 | 待回 |
-
-獎勵：每項 10 分，當日全清再加 20 分；軟糖 50、巧克力 80、洋芋片 120、雪糕 150。
-
-## 頁面與資料流
-
-- `index.html`：家長總覽，先顯示兩孩待辦，日曆／時程摺疊
-- `abigail.html`／`gloria.html`：小孩平板頁；不直接信任 JSON 的 `due_today`／`due_soon` 標籤，一律按澳門今天重算顯示
-- 勾選鍵：`puiching-eclass-todos-v1`；積分鍵：`puiching-eclass-points-v1`
-- 同步鍵：`puiching-eclass-sync-code-v1`；離線待送：`puiching-eclass-sync-pending-v1`
-- 同步只寫勾選＋積分，不回寫 `status.json`／`DASHBOARD.md`
-
-## 雲端同步狀態
-
-- 已實作：`sync.js`、`sync-config.js`（空佔位）、`firebase.rules.json`、`SYNC_SETUP.md`，三頁皆已接線
-- 未完成：Firebase Web config 七個值全空；未連線測試；未 commit
-- 下一步：使用者貼回 `apiKey`、`authDomain`、`databaseURL`、`projectId`、`storageBucket`、`messagingSenderId`、`appId` → 填入 `sync-config.js` → 驗證 → commit → 三裝置用同一組同步碼配對
+1. **M1 雲端同步與免打字配對**：
+   - 實作 `scripts/setup_firebase.sh` 自動化配置 Realtime Database、匿名驗證與寫入 `sync-config.js`。
+   - `index.html` 內建原生 SVG QR Code 卡片與家庭連結產出。
+   - 兩孩平板頁面（`abigail.html` / `gloria.html`）支援讀取 `?familyId=` 參數實現零打字一鍵配對，未連線自動平滑降級為本機模式。
+2. **M2 eClass 自動抓取引擎**：
+   - 實作 `scripts/scrape_eclass.py`，支援環境變數帳密傳遞與離線測試夾具（`tests/fixtures/`）。
+   - 嚴格落實李悅（P3）100% 排除進階科目、李昕（P1）無進階分流。
+   - 口試／Quiz 詳情完整抽取，會話失效時安全拋出 `LOGIN_REQUIRED`。
+3. **M3 雙寫真相與合規閘門**：
+   - 實作 `scripts/update_status.py`，原子化雙寫 `status.json` 與 `DASHBOARD.md`。
+   - 雙孩狀態嚴格隔離，無損保留既有獎勵點數與零食兌換目錄。
+   - 強制串接 `scripts/validate_status.py` 驗證閘門。
+4. **客觀驗收測試**：
+   - `tests/run_all_tests.py` 共 175 個端對端測項（Tier 1–4），已達到 **175/175 通過（100% Pass）**。
 
 ## 待確認
 

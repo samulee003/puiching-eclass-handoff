@@ -97,7 +97,15 @@
     var v = readJson(PENDING_STORE_KEY);
     return { todos: sanitizePending('todos', v.todos), points: sanitizePending('points', v.points) };
   }
-  function writePending() { writeJson(PENDING_STORE_KEY, state.pending); }
+  function writePending() {
+    var todosCount = Object.keys(state.pending.todos || {}).length;
+    var pointsCount = Object.keys(state.pending.points || {}).length;
+    if (todosCount === 0 && pointsCount === 0) {
+      try { localStorage.removeItem(PENDING_STORE_KEY); } catch (e) {}
+    } else {
+      writeJson(PENDING_STORE_KEY, state.pending);
+    }
+  }
 
   function getConfig() { return window.PUICHING_SYNC_CONFIG || {}; }
   function isConfigured() {
@@ -117,13 +125,36 @@
   function saveCode(c) { try { localStorage.setItem(SYNC_CODE_KEY, c); } catch (e) {} }
   function clearSavedCode() { try { localStorage.removeItem(SYNC_CODE_KEY); } catch (e) {} }
 
+  /**
+   * Updates sync panel indicator state with exact 4 state badges:
+   * - 已同步 ☁️
+   * - 本機模式 💻
+   * - 連接中…
+   * - 已離線 ⚠️
+   */
   function updatePanel(label, message, connected) {
     var panel = document.getElementById('sync-panel');
     if (!panel) return;
     var s = panel.querySelector('[data-sync-state]');
     var m = panel.querySelector('[data-sync-message]');
-    if (s) { s.textContent = label; s.classList.toggle('connected', Boolean(connected)); }
-    if (m) m.textContent = message;
+    if (s) {
+      s.textContent = label;
+      s.classList.remove('connected', 'local', 'connecting', 'offline');
+      if (label.indexOf('已同步') !== -1 || connected) {
+        s.classList.add('connected');
+        s.setAttribute('data-sync-state', 'connected');
+      } else if (label.indexOf('本機模式') !== -1) {
+        s.classList.add('local');
+        s.setAttribute('data-sync-state', 'local');
+      } else if (label.indexOf('連接中') !== -1) {
+        s.classList.add('connecting');
+        s.setAttribute('data-sync-state', 'connecting');
+      } else if (label.indexOf('已離線') !== -1) {
+        s.classList.add('offline');
+        s.setAttribute('data-sync-state', 'offline');
+      }
+    }
+    if (m && message !== undefined) m.textContent = message;
   }
   function panelInput() { return document.querySelector('#sync-code'); }
 
@@ -223,7 +254,7 @@
         writePending();
       }
     }).catch(function () {
-      updatePanel('已離線', '本機變更已保留；重新連線後會再嘗試同步。', false);
+      updatePanel('已離線 ⚠️', '網路暫時中斷；本機變更已保留，重新連線後自動補送。', false);
     });
   }
 
@@ -266,12 +297,10 @@
       var before = localValue(kind, baseline, key);
       var current = localValue(kind, local, key);
       var incomingValue = localValue(kind, remote, key);
-      // Both sides changed since baseline and disagree: remote wins (last snapshot), local change already in pending if important.
       if (!equalValue(kind, current, before) && !equalValue(kind, incomingValue, before) && !equalValue(kind, current, incomingValue)) {
         writes.push([key, current]);
       }
       if (equalValue(kind, current, incomingValue)) return;
-      // Local has unsent change that matches pending: keep local, re-push.
       changed = true;
       if (kind === 'todos') {
         if (incomingValue) local[key] = true; else delete local[key];
@@ -336,7 +365,29 @@
     var pointsHandler = function (snap) { applyRemote('points', parsePointRecords(snap.val())); };
     todosRef.on('value', todosHandler);
     pointsRef.on('value', pointsHandler);
-    state.listeners = [[todosRef, 'value', todosHandler], [pointsRef, 'value', pointsHandler]];
+
+    // RTDB real-time connection status listener (.info/connected)
+    var connectedRef = state.db.ref('.info/connected');
+    var connectedHandler = function (snap) {
+      var isOnline = Boolean(snap.val());
+      if (isOnline) {
+        if (state.connected) {
+          updatePanel('已同步 ☁️', '勾選＋積分會即時同步。換裝置輸入同一組碼即可。', true);
+          flushPending();
+        }
+      } else {
+        if (state.connected) {
+          updatePanel('已離線 ⚠️', '網路暫時中斷；本機變更已保留，重新連線後自動補送。', false);
+        }
+      }
+    };
+    connectedRef.on('value', connectedHandler);
+
+    state.listeners = [
+      [todosRef, 'value', todosHandler],
+      [pointsRef, 'value', pointsHandler],
+      [connectedRef, 'value', connectedHandler]
+    ];
   }
 
   function stopConnection(showStatus) {
@@ -346,7 +397,7 @@
     state.roomId = '';
     state.connected = false;
     state.remote = { todos: {}, points: {} };
-    if (showStatus) updatePanel('本機模式', '目前只保留在這台裝置。', false);
+    if (showStatus) updatePanel('本機模式 💻', '目前只保留在這台裝置；離線使用完全正常。', false);
   }
 
   function loadScript(url) {
@@ -392,14 +443,14 @@
   function connect(rawCode, silent) {
     var code = normalizeCode(rawCode);
     if (!CODE_PATTERN.test(code)) {
-      updatePanel('需要同步碼', '同步碼是 20 個英數字元，請檢查輸入。', false);
+      updatePanel('本機模式 💻', '同步碼格式不正確，請檢查（20 位英數字元）。', false);
       return Promise.resolve(false);
     }
     if (!isConfigured()) {
-      updatePanel('尚未設定雲端', '請先依 SYNC_SETUP.md 設定 Firebase；目前仍可離線使用。', false);
+      updatePanel('本機模式 💻', '請先依 SYNC_SETUP.md 設定 Firebase；目前仍可離線使用。', false);
       return Promise.resolve(false);
     }
-    updatePanel('連接中…', '正在安全連接同步空間。', false);
+    updatePanel('連接中…', '正在安全連接同步空間…', false);
     stopConnection(false);
     return ensureFirebase().then(function () {
       state.code = code;
@@ -416,11 +467,12 @@
       saveCode(code);
       var input = panelInput();
       if (input) input.value = formatCode(code);
+      updatePairingCards(code);
       updatePanel('已同步 ☁️', '勾選＋積分會即時同步。換裝置輸入同一組碼即可。', true);
       return true;
     }).catch(function (err) {
       stopConnection(false);
-      updatePanel('連接失敗', silent ? '上次同步未能連線；本機資料仍安全保留。' : (err && err.message) || '請檢查設定與網路。', false);
+      updatePanel('已離線 ⚠️', silent ? '上次同步未能連線；本機資料仍安全保留。' : ((err && err.message) || '連線失敗，目前已進入本機模式。'), false);
       return false;
     });
   }
@@ -431,6 +483,298 @@
     state.code = '';
     var input = panelInput();
     if (input) input.value = '';
+    updatePairingCards('');
+  }
+
+  // Pure client-side SVG QR code generator (ISO/IEC 18004 Model 2)
+  var internalQr = (function () {
+    var EXP = new Uint8Array(512), LOG = new Uint8Array(256), x = 1;
+    for (var i = 0; i < 255; i++) { EXP[i] = x; LOG[x] = i; x <<= 1; if (x & 0x100) x ^= 0x11d; }
+    for (var j = 255; j < 512; j++) EXP[j] = EXP[j - 255];
+    function gm(a, b) { return (a === 0 || b === 0) ? 0 : EXP[LOG[a] + LOG[b]]; }
+    var RS = {};
+    function getPoly(deg) {
+      if (RS[deg]) return RS[deg];
+      var p = new Uint8Array([1]);
+      for (var k = 0; k < deg; k++) {
+        var n = new Uint8Array(p.length + 1), f = EXP[k];
+        for (var l = 0; l < p.length; l++) { n[l] ^= gm(p[l], f); n[l + 1] ^= p[l]; }
+        p = n;
+      }
+      return (RS[deg] = p);
+    }
+    function calcEC(d, ec) {
+      var g = getPoly(ec), r = new Uint8Array(ec);
+      for (var i = 0; i < d.length; i++) {
+        var f = d[i] ^ r[0];
+        for (var c = 0; c < ec - 1; c++) r[c] = r[c + 1] ^ gm(g[c], f);
+        r[ec - 1] = gm(g[ec - 1], f);
+      }
+      return r;
+    }
+    var SPECS = {
+      1: { c: 26, ec: 10, g: [[1, 16]] }, 2: { c: 44, ec: 16, g: [[1, 28]] },
+      3: { c: 70, ec: 26, g: [[1, 44]] }, 4: { c: 100, ec: 18, g: [[2, 32]] },
+      5: { c: 134, ec: 24, g: [[2, 43]] }, 6: { c: 172, ec: 16, g: [[4, 27]] },
+      7: { c: 196, ec: 18, g: [[4, 31]] }, 8: { c: 242, ec: 22, g: [[2, 38], [2, 39]] },
+      9: { c: 292, ec: 22, g: [[3, 36], [2, 37]] }, 10: { c: 346, ec: 26, g: [[4, 43], [1, 44]] }
+    };
+    var ALIGN = { 2: [6, 18], 3: [6, 22], 4: [6, 26], 5: [6, 30], 6: [6, 34], 7: [6, 22, 38], 8: [6, 24, 42], 9: [6, 26, 46], 10: [6, 28, 50] };
+    function toUtf8(s) {
+      if (typeof TextEncoder !== 'undefined') return new TextEncoder().encode(s);
+      var u = [];
+      for (var i = 0; i < s.length; i++) {
+        var c = s.charCodeAt(i);
+        if (c < 128) u.push(c);
+        else if (c < 2048) u.push(192 | (c >> 6), 128 | (c & 63));
+        else u.push(224 | (c >> 12), 128 | ((c >> 6) & 63), 128 | (c & 63));
+      }
+      return new Uint8Array(u);
+    }
+    function encode(bytes) {
+      var v = 1;
+      for (var ver = 1; ver <= 10; ver++) {
+        var sp = SPECS[ver], dc = 0;
+        for (var gi = 0; gi < sp.g.length; gi++) dc += sp.g[gi][0] * sp.g[gi][1];
+        if (4 + (ver <= 9 ? 8 : 16) + (bytes.length * 8) <= dc * 8) { v = ver; break; }
+      }
+      var spec = SPECS[v], totalCW = 0;
+      for (var gj = 0; gj < spec.g.length; gj++) totalCW += spec.g[gj][0] * spec.g[gj][1];
+      var bits = [];
+      function pb(num, len) { for (var b = len - 1; b >= 0; b--) bits.push((num >>> b) & 1); }
+      pb(4, 4); pb(bytes.length, v <= 9 ? 8 : 16);
+      for (var bi = 0; bi < bytes.length; bi++) pb(bytes[bi], 8);
+      var term = Math.min(4, totalCW * 8 - bits.length);
+      for (var t = 0; t < term; t++) bits.push(0);
+      while (bits.length % 8 !== 0) bits.push(0);
+      var cw = [];
+      for (var i = 0; i < bits.length; i += 8) {
+        var byte = 0; for (var b = 0; b < 8; b++) byte = (byte << 1) | bits[i + b];
+        cw.push(byte);
+      }
+      var pad = [236, 17], pi = 0;
+      while (cw.length < totalCW) { cw.push(pad[pi % 2]); pi++; }
+      var blks = [], ecBlks = [], off = 0;
+      for (var gk = 0; gk < spec.g.length; gk++) {
+        var nb = spec.g[gk][0], sz = spec.g[gk][1];
+        for (var bk = 0; bk < nb; bk++) {
+          var blk = new Uint8Array(cw.slice(off, off + sz)); off += sz;
+          blks.push(blk); ecBlks.push(calcEC(blk, spec.ec));
+        }
+      }
+      var finalCW = [], maxD = 0;
+      for (var m = 0; m < blks.length; m++) if (blks[m].length > maxD) maxD = blks[m].length;
+      for (var ci = 0; ci < maxD; ci++) {
+        for (var bj = 0; bj < blks.length; bj++) if (ci < blks[bj].length) finalCW.push(blks[bj][ci]);
+      }
+      for (var ei = 0; ei < spec.ec; ei++) {
+        for (var eb = 0; eb < ecBlks.length; eb++) finalCW.push(ecBlks[eb][ei]);
+      }
+      return { v: v, cw: finalCW };
+    }
+    function makeMatrix(res) {
+      var v = res.v, cw = res.cw, sz = (v - 1) * 4 + 21;
+      var mat = [], isFn = [];
+      for (var r = 0; r < sz; r++) { mat.push(new Uint8Array(sz)); isFn.push(new Uint8Array(sz)); }
+      function set(row, col, val) { mat[row][col] = val ? 1 : 0; isFn[row][col] = 1; }
+      function finder(fr, fc) {
+        for (var r = -1; r <= 7; r++) {
+          for (var c = -1; c <= 7; c++) {
+            var cr = fr + r, cc = fc + c;
+            if (cr < 0 || cr >= sz || cc < 0 || cc >= sz) continue;
+            if (r === -1 || r === 7 || c === -1 || c === 7) set(cr, cc, 0);
+            else if (r === 0 || r === 6 || c === 0 || c === 6 || (r >= 2 && r <= 4 && c >= 2 && c <= 4)) set(cr, cc, 1);
+            else set(cr, cc, 0);
+          }
+        }
+      }
+      finder(0, 0); finder(0, sz - 7); finder(sz - 7, 0);
+      var coords = ALIGN[v] || [];
+      for (var ai = 0; ai < coords.length; ai++) {
+        for (var aj = 0; aj < coords.length; aj++) {
+          var ar = coords[ai], ac = coords[aj];
+          if (isFn[ar][ac]) continue;
+          for (var dr = -2; dr <= 2; dr++) {
+            for (var dc = -2; dc <= 2; dc++) {
+              set(ar + dr, ac + dc, Math.abs(dr) === 2 || Math.abs(dc) === 2 || (dr === 0 && dc === 0) ? 1 : 0);
+            }
+          }
+        }
+      }
+      for (var t = 8; t < sz - 8; t++) {
+        if (!isFn[6][t]) set(6, t, t % 2 === 0 ? 1 : 0);
+        if (!isFn[t][6]) set(t, 6, t % 2 === 0 ? 1 : 0);
+      }
+      set(sz - 8, 8, 1);
+      for (var f = 0; f < 9; f++) { isFn[8][f] = 1; isFn[f][8] = 1; }
+      for (var f2 = sz - 8; f2 < sz; f2++) { isFn[8][f2] = 1; isFn[f2][8] = 1; }
+      var bits = [];
+      for (var cwi = 0; cwi < cw.length; cwi++) {
+        for (var bit = 7; bit >= 0; bit--) bits.push((cw[cwi] >>> bit) & 1);
+      }
+      var bIdx = 0, up = true;
+      for (var col = sz - 1; col > 0; col -= 2) {
+        if (col === 6) col--;
+        var rows = [];
+        for (var ri = 0; ri < sz; ri++) rows.push(up ? sz - 1 - ri : ri);
+        for (var rk = 0; rk < rows.length; rk++) {
+          var row = rows[rk];
+          for (var c2 = 0; c2 < 2; c2++) {
+            var cCur = col - c2;
+            if (!isFn[row][cCur]) mat[row][cCur] = bIdx < bits.length ? bits[bIdx++] : 0;
+          }
+        }
+        up = !up;
+      }
+      var FMT = [0x1472, 0x1167, 0x1E50, 0x1B45, 0x0538, 0x002D, 0x0F1A, 0x0A0F];
+      var bestM = 0, bestP = Infinity;
+      function maskCond(m, ro, co) {
+        if (m === 0) return (ro + co) % 2 === 0;
+        if (m === 1) return ro % 2 === 0;
+        if (m === 2) return co % 3 === 0;
+        if (m === 3) return (ro + co) % 3 === 0;
+        if (m === 4) return (Math.floor(ro / 2) + Math.floor(co / 3)) % 2 === 0;
+        if (m === 5) return ((ro * co) % 2) + ((ro * co) % 3) === 0;
+        if (m === 6) return (((ro * co) % 2) + ((ro * co) % 3)) % 2 === 0;
+        return ((ro + co) % 2) + ((ro * co) % 3) === 0;
+      }
+      for (var mk = 0; mk < 8; mk++) {
+        var pen = 0;
+        for (var pr = 0; pr < sz; pr++) {
+          var count = 1;
+          for (var pc = 1; pc < sz; pc++) {
+            var v1 = isFn[pr][pc] ? mat[pr][pc] : mat[pr][pc] ^ (maskCond(mk, pr, pc) ? 1 : 0);
+            var v0 = isFn[pr][pc - 1] ? mat[pr][pc - 1] : mat[pr][pc - 1] ^ (maskCond(mk, pr, pc - 1) ? 1 : 0);
+            if (v1 === v0) count++; else { if (count >= 5) pen += 3 + (count - 5); count = 1; }
+          }
+          if (count >= 5) pen += 3 + (count - 5);
+        }
+        if (pen < bestP) { bestP = pen; bestM = mk; }
+      }
+      for (var fr = 0; fr < sz; fr++) {
+        for (var fc = 0; fc < sz; fc++) {
+          if (!isFn[fr][fc] && maskCond(bestM, fr, fc)) mat[fr][fc] ^= 1;
+        }
+      }
+      var fmtVal = FMT[bestM];
+      var tll = [[8,0],[8,1],[8,2],[8,3],[8,4],[8,5],[8,7],[8,8],[7,8],[5,8],[4,8],[3,8],[2,8],[1,8],[0,8]];
+      for (var fIdx = 0; fIdx < 15; fIdx++) {
+        var bVal = (fmtVal >>> (14 - fIdx)) & 1;
+        mat[tll[fIdx][0]][tll[fIdx][1]] = bVal;
+        if (fIdx < 7) mat[sz - 1 - fIdx][8] = bVal;
+        else mat[8][sz - 15 + fIdx] = bVal;
+      }
+      return mat;
+    }
+    return {
+      generateSvg: function (text, opts) {
+        opts = opts || {};
+        var sz = opts.size || 180, pad = typeof opts.margin === 'number' ? opts.margin : 2;
+        var mat = makeMatrix(encode(toUtf8(String(text || ''))));
+        var dim = mat.length, total = dim + (pad * 2);
+        var p = '';
+        for (var r = 0; r < dim; r++) {
+          for (var c = 0; c < dim; c++) {
+            if (mat[r][c]) p += 'M' + (c + pad) + ' ' + (r + pad) + 'h1v1h-1z ';
+          }
+        }
+        return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' + total + ' ' + total + '" width="' + sz + '" height="' + sz + '" shape-rendering="crispEdges"><rect width="' + total + '" height="' + total + '" fill="#ffffff"/><path d="' + p + '" fill="#000000"/></svg>';
+      }
+    };
+  })();
+
+  if (!window.QRCode) window.QRCode = internalQr;
+  if (!window.generateQrSvg) window.generateQrSvg = internalQr.generateSvg;
+
+  /**
+   * Generates pure client-side SVG QR Code string without external network.
+   */
+  function generateQrSvgString(text, options) {
+    if (window.QRCode && typeof window.QRCode.generateSvg === 'function') {
+      return window.QRCode.generateSvg(text, options);
+    }
+    if (typeof window.generateQrSvg === 'function') {
+      return window.generateQrSvg(text, options);
+    }
+    return internalQr.generateSvg(text, options);
+  }
+
+  /**
+   * Computes child pairing URL: ${origin}${pathname}abigail.html?sync=${code}
+   */
+  function getChildPairingUrl(childPage, code) {
+    var origin = window.location.origin || (window.location.protocol + '//' + window.location.host);
+    var pathname = window.location.pathname || '/';
+    if (pathname.endsWith('index.html')) {
+      pathname = pathname.slice(0, -10);
+    }
+    if (!pathname.endsWith('/')) {
+      pathname += '/';
+    }
+    return origin + pathname + childPage + '?sync=' + code;
+  }
+
+  /**
+   * Updates or hides the Quick-Pairing cards for Abigail & Gloria on the parent page.
+   */
+  function updatePairingCards(code) {
+    var cardsSection = document.getElementById('sync-pairing-section');
+    if (!cardsSection) return;
+    var norm = normalizeCode(code);
+    if (!CODE_PATTERN.test(norm)) {
+      cardsSection.style.display = 'none';
+      return;
+    }
+    cardsSection.style.display = 'block';
+
+    var abigailUrl = getChildPairingUrl('abigail.html', norm);
+    var gloriaUrl = getChildPairingUrl('gloria.html', norm);
+
+    var urlAbigailEl = document.getElementById('sync-url-abigail');
+    var urlGloriaEl = document.getElementById('sync-url-gloria');
+    if (urlAbigailEl) urlAbigailEl.textContent = abigailUrl;
+    if (urlGloriaEl) urlGloriaEl.textContent = gloriaUrl;
+
+    var qrAbigailEl = document.getElementById('sync-qr-abigail');
+    var qrGloriaEl = document.getElementById('sync-qr-gloria');
+    if (qrAbigailEl) {
+      qrAbigailEl.innerHTML = generateQrSvgString(abigailUrl, { size: 160, margin: 2 });
+    }
+    if (qrGloriaEl) {
+      qrGloriaEl.innerHTML = generateQrSvgString(gloriaUrl, { size: 160, margin: 2 });
+    }
+  }
+
+  /**
+   * Auto-extracts ?sync=... or ?familyCode=... or #sync=... from URL,
+   * immediately sanitizes the browser address bar, and returns the normalized code.
+   */
+  function extractSyncCodeFromUrl() {
+    try {
+      var search = window.location.search || '';
+      var hash = window.location.hash || '';
+      var match = search.match(/[?&](?:sync|familyCode|code)=([A-Za-z0-9-]+)/i) ||
+                  hash.match(/[#&](?:sync|familyCode|code)=([A-Za-z0-9-]+)/i);
+      if (!match) return null;
+      var raw = match[1];
+      var normalized = normalizeCode(raw);
+      if (!CODE_PATTERN.test(normalized)) return null;
+
+      // Address bar sanitization: immediately strip sensitive sync code from browser history and URL bar
+      if (window.history && window.history.replaceState) {
+        var cleanSearch = search.replace(/([?&])(?:sync|familyCode|code)=[^&]*(&|$)/i, function (m, p1, p2) {
+          return p2 ? p1 : '';
+        }).replace(/[?&]$/, '');
+        var cleanHash = hash.replace(/([#&])(?:sync|familyCode|code)=[^&]*(&|$)/i, function (m, p1, p2) {
+          return p2 ? p1 : '';
+        }).replace(/[#&]$/, '');
+        var cleanUrl = window.location.pathname + cleanSearch + cleanHash;
+        window.history.replaceState(null, document.title, cleanUrl || window.location.pathname);
+      }
+      return normalized;
+    } catch (e) {
+      return null;
+    }
   }
 
   function setupPanel() {
@@ -438,9 +782,42 @@
     if (!panel || panel.dataset.ready === 'true') return;
     panel.dataset.ready = 'true';
     var isParent = panel.dataset.syncRole === 'parent';
-    var role = isParent ? '家長在這台產生同步碼，再輸入到小孩平板' : '向家長取得同步碼，輸入後連接';
+    var role = isParent ? '家長在這台產生同步碼，再配對至小孩平板' : '向家長取得同步碼，輸入後連接';
+
+    var parentPairingHtml = '';
+    if (isParent) {
+      parentPairingHtml =
+        '<div class="sync-pairing-section" id="sync-pairing-section" style="display:none; margin-top: 14px; border-top: 1px dashed var(--border, #334155); padding-top: 12px;">' +
+        '  <div style="font-weight:700; margin-bottom: 8px; color: var(--text, #e2e8f0); font-size: 0.85rem;">📱 小孩平板極簡配對（免手動輸入代碼）</div>' +
+        '  <div class="sync-cards-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px;">' +
+        '    <div class="sync-card" data-child="abigail" style="background: rgba(255,255,255,0.03); border: 1px solid var(--border, #334155); border-radius: 10px; padding: 10px;">' +
+        '      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 6px;">' +
+        '        <strong>🦊 李悅（Abigail · P3）</strong>' +
+        '      </div>' +
+        '      <div class="sync-card-actions" style="display:flex; gap:6px; margin-bottom:8px;">' +
+        '        <button type="button" data-action="toggle-qr" data-target="abigail" style="cursor:pointer;">顯示 QR Code</button>' +
+        '        <button type="button" data-action="copy-url" data-target="abigail" style="cursor:pointer;">複製配對連結</button>' +
+        '      </div>' +
+        '      <div class="sync-qr-container" id="sync-qr-abigail" style="display:none; text-align:center; padding:8px; background:#fff; border-radius:8px; margin-bottom:6px;"></div>' +
+        '      <div class="sync-card-url" id="sync-url-abigail" style="font-size:0.72rem; color:var(--muted, #94a3b8); word-break:break-all;"></div>' +
+        '    </div>' +
+        '    <div class="sync-card" data-child="gloria" style="background: rgba(255,255,255,0.03); border: 1px solid var(--border, #334155); border-radius: 10px; padding: 10px;">' +
+        '      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 6px;">' +
+        '        <strong>🐰 李昕（Gloria · P1）</strong>' +
+        '      </div>' +
+        '      <div class="sync-card-actions" style="display:flex; gap:6px; margin-bottom:8px;">' +
+        '        <button type="button" data-action="toggle-qr" data-target="gloria" style="cursor:pointer;">顯示 QR Code</button>' +
+        '        <button type="button" data-action="copy-url" data-target="gloria" style="cursor:pointer;">複製配對連結</button>' +
+        '      </div>' +
+        '      <div class="sync-qr-container" id="sync-qr-gloria" style="display:none; text-align:center; padding:8px; background:#fff; border-radius:8px; margin-bottom:6px;"></div>' +
+        '      <div class="sync-card-url" id="sync-url-gloria" style="font-size:0.72rem; color:var(--muted, #94a3b8); word-break:break-all;"></div>' +
+        '    </div>' +
+        '  </div>' +
+        '</div>';
+    }
+
     panel.innerHTML =
-      '<div class="sync-header"><strong>☁️ 跨裝置同步</strong><span class="sync-state" data-sync-state>本機模式</span></div>' +
+      '<div class="sync-header"><strong>☁️ 跨裝置同步</strong><span class="sync-state local" data-sync-state>本機模式 💻</span></div>' +
       '<div class="sync-copy">' + role + '。只同步勾選＋積分，不含 eClass 密碼。</div>' +
       '<div class="sync-controls">' +
       '<label for="sync-code">家庭同步碼</label>' +
@@ -449,30 +826,89 @@
       '<button type="button" data-sync-action="connect">連接雲端</button>' +
       '<button type="button" data-sync-action="copy">複製同步碼</button>' +
       '<button type="button" data-sync-action="disconnect">停止同步</button>' +
-      '</div><div class="sync-message" data-sync-message>尚未設定雲端時，仍會照常使用本機模式。</div>';
+      '</div>' +
+      '<div class="sync-message" data-sync-message>目前只保留在這台裝置；離線使用完全正常。</div>' +
+      parentPairingHtml;
+
     var input = panel.querySelector('#sync-code');
     var saved = readSavedCode();
-    if (CODE_PATTERN.test(saved)) input.value = formatCode(saved);
+    if (CODE_PATTERN.test(saved)) {
+      input.value = formatCode(saved);
+      if (isParent) updatePairingCards(saved);
+    }
+
     panel.querySelector('[data-sync-action="generate"]').addEventListener('click', function () {
       var code = generateCode();
       input.value = formatCode(code);
+      if (isParent) updatePairingCards(code);
       connect(code, false);
     });
-    panel.querySelector('[data-sync-action="connect"]').addEventListener('click', function () { connect(input.value, false); });
+
+    panel.querySelector('[data-sync-action="connect"]').addEventListener('click', function () {
+      var code = normalizeCode(input.value);
+      if (isParent) updatePairingCards(code);
+      connect(code, false);
+    });
+
     panel.querySelector('[data-sync-action="copy"]').addEventListener('click', function () {
       var code = normalizeCode(input.value);
-      if (!CODE_PATTERN.test(code)) { updatePanel('需要同步碼', '先產生或輸入同步碼。', false); return; }
+      if (!CODE_PATTERN.test(code)) {
+        updatePanel('本機模式 💻', '先產生或輸入同步碼。', false);
+        return;
+      }
       if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(formatCode(code)).then(function () {
-          updatePanel(state.connected ? '已同步 ☁️' : '同步碼已複製', '請把同步碼交給另一台裝置。', state.connected);
+          updatePanel(state.connected ? '已同步 ☁️' : '本機模式 💻', '同步碼已複製，請交給另一台裝置。', state.connected);
         }).catch(function () { input.focus(); input.select(); });
       } else { input.focus(); input.select(); }
     });
+
     panel.querySelector('[data-sync-action="disconnect"]').addEventListener('click', disconnect);
+
     input.addEventListener('input', function () {
       input.value = input.value.toUpperCase().replace(/[^A-Z2-9-]/g, '');
+      var norm = normalizeCode(input.value);
+      if (isParent && CODE_PATTERN.test(norm)) {
+        updatePairingCards(norm);
+      }
     });
-    if (!isConfigured()) updatePanel('本機模式', '要跨裝置同步，請依 SYNC_SETUP.md 設定 Firebase。', false);
+
+    if (isParent) {
+      // Toggle QR code display
+      panel.querySelectorAll('[data-action="toggle-qr"]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var target = btn.getAttribute('data-target');
+          var qrBox = document.getElementById('sync-qr-' + target);
+          if (!qrBox) return;
+          var isHidden = qrBox.style.display === 'none';
+          qrBox.style.display = isHidden ? 'block' : 'none';
+          btn.textContent = isHidden ? '隱藏 QR Code' : '顯示 QR Code';
+        });
+      });
+
+      // Copy pairing URL
+      panel.querySelectorAll('[data-action="copy-url"]').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var target = btn.getAttribute('data-target');
+          var urlEl = document.getElementById('sync-url-' + target);
+          var url = urlEl ? urlEl.textContent : '';
+          if (!url) return;
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(url).then(function () {
+              var origText = btn.textContent;
+              btn.textContent = '已複製連結！✓';
+              setTimeout(function () { btn.textContent = origText; }, 2000);
+            }).catch(function () { prompt('請手動複製配對連結：', url); });
+          } else {
+            prompt('請手動複製配對連結：', url);
+          }
+        });
+      });
+    }
+
+    if (!isConfigured()) {
+      updatePanel('本機模式 💻', '要跨裝置同步，請先設定 Firebase。目前已啟用本機模式。', false);
+    }
   }
 
   function register(handlers) {
@@ -481,18 +917,51 @@
     state.local.points = sanitizePoints(readJson(POINTS_STORE_KEY));
     state.pending = readPending();
     setupPanel();
+
+    // Check for auto-pairing query parameter or hash on child tablets
+    var urlCode = extractSyncCodeFromUrl();
+    if (urlCode && CODE_PATTERN.test(urlCode)) {
+      saveCode(urlCode);
+      var input = panelInput();
+      if (input) input.value = formatCode(urlCode);
+      updatePanel('連接中…', '已自動載入家庭同步碼，正在連線… ☁️', false);
+      window.setTimeout(function () {
+        connect(urlCode, false).then(function (ok) {
+          if (ok) {
+            var toast = document.getElementById('toast');
+            if (toast) {
+              toast.textContent = '已自動連線家庭同步空間！☁️';
+              toast.classList.add('show');
+              setTimeout(function () { toast.classList.remove('show'); }, 3000);
+            }
+          }
+        });
+      }, 0);
+      return;
+    }
+
     var saved = readSavedCode();
     if (isConfigured() && CODE_PATTERN.test(saved)) {
       window.setTimeout(function () { connect(saved, true); }, 0);
     } else if (!isConfigured()) {
-      updatePanel('本機模式', '要跨裝置同步，請依 SYNC_SETUP.md 設定 Firebase。', false);
+      updatePanel('本機模式 💻', '要跨裝置同步，請先設定 Firebase。目前已啟用本機模式。', false);
     }
   }
 
   window.addEventListener('online', function () {
-    if (state.connected) { flushPending(); return; }
+    if (state.connected) {
+      updatePanel('已同步 ☁️', '勾選＋積分會即時同步。換裝置輸入同一組碼即可。', true);
+      flushPending();
+      return;
+    }
     var saved = readSavedCode();
     if (isConfigured() && CODE_PATTERN.test(saved)) connect(saved, true);
+  });
+
+  window.addEventListener('offline', function () {
+    if (state.connected) {
+      updatePanel('已離線 ⚠️', '網路暫時中斷；本機變更已保留，重新連線後自動補送。', false);
+    }
   });
 
   window.PuichingSync = {
@@ -501,6 +970,11 @@
     replacePoints: function (v) { publishChanges('points', v); },
     connect: connect,
     disconnect: disconnect,
-    isConfigured: isConfigured
+    isConfigured: isConfigured,
+    generateQrSvg: generateQrSvgString,
+    getChildPairingUrl: getChildPairingUrl,
+    extractSyncCodeFromUrl: extractSyncCodeFromUrl,
+    updatePairingCards: updatePairingCards,
+    flushPending: flushPending
   };
 })();

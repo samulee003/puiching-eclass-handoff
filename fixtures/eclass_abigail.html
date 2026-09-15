@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+    <meta charset="UTF-8">
+    <title>澳門培正中學 eClass 綜合平台 - 家課表</title>
+    <link rel="stylesheet" href="/templates/css/eclass_default.css">
+</head>
+<body>
+    <div id="header">
+        <div class="school-title">澳門培正中學 Escola Pui Ching</div>
+        <div class="user-info">
+            <span class="parent-label">家長：李先生</span> |
+            <span class="student-label">學生：</span><span class="student-name">李悅</span>
+            <span class="student-class">(P3A)</span>
+            <span class="session-id" style="display:none;">sess_98234812a</span>
+        </div>
+    </div>
+
+    <div id="nav-bar">
+        <ul>
+            <li><a href="/templates/index.php">首頁</a></li>
+            <li class="active"><a href="/templates/homework/index.php">資訊服務 &gt; 家課表</a></li>
+            <li><a href="/templates/attendance.php">出勤紀錄</a></li>
+            <li><a href="/templates/logout.php">登出</a></li>
+        </ul>
+    </div>
+
+    <div id="main-content">
+        <h2>學生家課表 (Homework Table)</h2>
+        <div class="date-bar">查詢日期：2026-09-15</div>
+
+        <table class="homework-table" id="homeworkTable" border="1" cellpadding="6" cellspacing="0">
+            <thead>
+                <tr>
+                    <th class="col-subject">科目</th>
+                    <th class="col-title">項目 / 標題</th>
+                    <th class="col-due">截止日期</th>
+                    <th class="col-status">繳交要求</th>
+                    <th class="col-note">備註 / 說明</th>
+                    <th class="col-detail">詳情內容</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- 1. 今日必做 (due 2026-09-15) -->
+                <tr class="hw-row" data-due="2026-09-15">
+                    <td class="hw-subject">中文</td>
+                    <td class="hw-title">第3課習作</td>
+                    <td class="hw-due">2026-09-15</td>
+                    <td class="hw-submit"><span class="badge-submit">須繳交</span></td>
+                    <td class="hw-note"></td>
+                    <td class="hw-detail"></td>
+                </tr>
+                <tr class="hw-row" data-due="2026-09-15">
+                    <td class="hw-subject">數學</td>
+                    <td class="hw-title">梁：習作6（p.14）</td>
+                    <td class="hw-due">2026-09-15</td>
+                    <td class="hw-submit"><span class="badge-submit">須繳交</span></td>
+                    <td class="hw-note">完成習作第六課第14頁</td>
+                    <td class="hw-detail"></td>
+                </tr>
+                <tr class="hw-row" data-due="2026-09-15">
+                    <td class="hw-subject">英文</td>
+                    <td class="hw-title">(Ms. Au Ieong) Do Wb. p.14</td>
+                    <td class="hw-due">2026-09-15</td>
+                    <td class="hw-submit"><span class="badge-nosubmit">不須繳交</span></td>
+                    <td class="hw-note">不用交，今日做</td>
+                    <td class="hw-detail"></td>
+                </tr>
+                <tr class="hw-row" data-due="2026-09-15">
+                    <td class="hw-subject">英文</td>
+                    <td class="hw-title">(Miss Valentina) Do Wb. p.16</td>
+                    <td class="hw-due">2026-09-15</td>
+                    <td class="hw-submit"><span class="badge-submit">須繳交</span></td>
+                    <td class="hw-note"></td>
+                    <td class="hw-detail"></td>
+                </tr>
+
+                <!-- 進階科目：李悅必須 100% 排除 (Advanced Stream Filter Test) -->
+                <tr class="hw-row advanced-row" data-due="2026-09-15">
+                    <td class="hw-subject">進階中文</td>
+                    <td class="hw-title">文言文課外閱讀延伸篇章（一）</td>
+                    <td class="hw-due">2026-09-15</td>
+                    <td class="hw-submit"><span class="badge-submit">須繳交</span></td>
+                    <td class="hw-note">拔尖組必做</td>
+                    <td class="hw-detail">詳細閱讀附錄文言短文三篇並作答題目</td>
+                </tr>
+                <tr class="hw-row advanced-row" data-due="2026-09-16">
+                    <td class="hw-subject">進階英文</td>
+                    <td class="hw-title">Advanced Grammar Unit 1 Exercise</td>
+                    <td class="hw-due">2026-09-16</td>
+                    <td class="hw-submit"><span class="badge-submit">須繳交</span></td>
+                    <td class="hw-note">Olympiad English Stream</td>
+                    <td class="hw-detail">Complete pages 18 to 22 in advanced workbook</td>
+                </tr>
+                <tr class="hw-row advanced-row" data-due="2026-09-17">
+                    <td class="hw-subject">進階數學</td>
+                    <td class="hw-title">奧數思維拔高題（一）</td>
+                    <td class="hw-due">2026-09-17</td>
+                    <td class="hw-submit"><span class="badge-submit">須繳交</span></td>
+                    <td class="hw-note">奧林匹克培訓班</td>
+                    <td class="hw-detail">數論及邏輯推理五道進階難題</td>
+                </tr>
+
+                <!-- 邊界情況測試：科目為「中文」（非進階），但題目含「進階」二字，李悅不可被誤刪 -->
+                <tr class="hw-row" data-due="2026-09-16">
+                    <td class="hw-subject">中文</td>
+                    <td class="hw-title">完成進階主題補充練習（一般班選做）</td>
+                    <td class="hw-due">2026-09-16</td>
+                    <td class="hw-submit"><span class="badge-nosubmit">不須繳交</span></td>
+                    <td class="hw-note">供有餘力同學自我挑戰</td>
+                    <td class="hw-detail">第5課詞彙補充進階工作紙</td>
+                </tr>
+
+                <!-- 2. 近幾日 (due 2026-09-16 ~ 2026-09-22) -->
+                <tr class="hw-row" data-due="2026-09-16">
+                    <td class="hw-subject">數學</td>
+                    <td class="hw-title">呂：周四交習作6</td>
+                    <td class="hw-due">2026-09-16</td>
+                    <td class="hw-submit"><span class="badge-submit">須繳交</span></td>
+                    <td class="hw-note">先做按「邊」分類三角形；按「角」周三堂內完成</td>
+                    <td class="hw-detail"></td>
+                </tr>
+                <tr class="hw-row" data-due="2026-09-16">
+                    <td class="hw-subject">英文</td>
+                    <td class="hw-title">(Ms. Au Ieong) Do Wb. p.16</td>
+                    <td class="hw-due">2026-09-16</td>
+                    <td class="hw-submit"><span class="badge-submit">須繳交</span></td>
+                    <td class="hw-note"></td>
+                    <td class="hw-detail"></td>
+                </tr>
+                <tr class="hw-row" data-due="2026-09-20">
+                    <td class="hw-subject">英文</td>
+                    <td class="hw-title">Correct Spelling Challenge / S.C. on Monday (List 2)</td>
+                    <td class="hw-due">2026-09-20</td>
+                    <td class="hw-submit"><span class="badge-submit">須繳交</span></td>
+                    <td class="hw-note"></td>
+                    <td class="hw-detail"></td>
+                </tr>
+                <tr class="hw-row" data-due="2026-09-22">
+                    <td class="hw-subject">中文</td>
+                    <td class="hw-title">22/9前背第三課2、3段</td>
+                    <td class="hw-due">2026-09-22</td>
+                    <td class="hw-submit"><span class="badge-submit">須繳交</span></td>
+                    <td class="hw-note"></td>
+                    <td class="hw-detail"></td>
+                </tr>
+
+                <!-- 3. 本週測驗 (Test/Quiz with full detail) -->
+                <tr class="hw-row quiz-row" data-due="2026-09-17">
+                    <td class="hw-subject">英文</td>
+                    <td class="hw-title">Quiz 1 on 17/9 (Thur)</td>
+                    <td class="hw-due">2026-09-17</td>
+                    <td class="hw-submit"><span class="badge-submit">須繳交</span></td>
+                    <td class="hw-note">請帶HB鉛筆及橡皮擦</td>
+                    <td class="hw-detail">
+                        <div class="detail-content">Present Simple／Present Continuous／Past Tense（Worksheet 1–3）＋Reading Comprehension</div>
+                    </td>
+                </tr>
+
+                <!-- 4. 其他 (Other / Long-term / Oral) -->
+                <tr class="hw-row oral-row" data-due="2026-10-16">
+                    <td class="hw-subject">中文</td>
+                    <td class="hw-title">第七周隨堂進行第一段口試（愛國愛澳）</td>
+                    <td class="hw-due">2026-10-16</td>
+                    <td class="hw-submit"><span class="badge-submit">須繳交</span></td>
+                    <td class="hw-note">演講比賽預選</td>
+                    <td class="hw-detail">
+                        <div class="detail-content">3分鐘內；粵語／普通話；繪本／改編／自創</div>
+                    </td>
+                </tr>
+                <tr class="hw-row" data-due="2027-05-07">
+                    <td class="hw-subject">中文</td>
+                    <td class="hw-title">勤讀獎／閱讀卡（全年20張／週上限2）</td>
+                    <td class="hw-due">2027-05-07</td>
+                    <td class="hw-submit"><span class="badge-submit">須繳交</span></td>
+                    <td class="hw-note">全年閱讀計劃</td>
+                    <td class="hw-detail">進度：0/20</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>

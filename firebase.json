@@ -1,0 +1,10 @@
+{
+  "database": {
+    "rules": "firebase.rules.json"
+  },
+  "auth": {
+    "providers": {
+      "anonymous": true
+    }
+  }
+}
