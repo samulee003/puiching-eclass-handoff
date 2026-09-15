@@ -7,15 +7,22 @@
 <meta name="description" content="給家長查看李悅和李昕功課進度的 DASHBOARD" />
 <style>
   :root {
-    --bg: #0f1419; --card: #1a2332; --text: #e7ecf3; --muted: #8b9bb4;
-    --accent: #3d8bfd; --warn: #ffb020; --ok: #3dd68c; --border: #2a3548;
-    --child-yue: #3d8bfd; --child-xin: #f472b6;
-    --overdue: #ff6b6b; --upcoming: #3dd68c;
+    --bg: #0c1218; --card: #15202e; --text: #f2f6fb; --muted: #93a4bc;
+    --accent: #5aa7ff; --warn: #ffc14d; --ok: #3dd68c; --border: #2a3a50;
+    /* Child colors distinct from accent blue */
+    --child-yue: #20d3c2; --child-yue-soft: rgba(32, 211, 194, .22);
+    --child-xin: #ff6b8a; --child-xin-soft: rgba(255, 107, 138, .22);
+    --overdue: #ff5c4d; --overdue-soft: rgba(255, 92, 77, .16);
+    --today: #ffd166; --today-soft: rgba(255, 209, 102, .18);
   }
   * { box-sizing: border-box; }
   body {
     margin: 0; font-family: ui-sans-serif, system-ui, -apple-system, "Noto Sans TC", sans-serif;
-    background: radial-gradient(1200px 600px at 10% -10%, #1b2a44, var(--bg));
+    background:
+      radial-gradient(900px 520px at 8% -8%, rgba(32, 211, 194, .16), transparent 55%),
+      radial-gradient(800px 480px at 92% 0%, rgba(255, 107, 138, .14), transparent 50%),
+      radial-gradient(1000px 600px at 50% 100%, rgba(90, 167, 255, .08), transparent 45%),
+      var(--bg);
     color: var(--text); line-height: 1.45; padding: 20px 14px 80px;
   }
   .wrap { max-width: 920px; margin: 0 auto; }
@@ -33,12 +40,20 @@
   .card {
     background: var(--card); border: 1px solid var(--border); border-radius: 14px;
     padding: 14px 14px 10px; box-shadow: 0 8px 24px rgba(0,0,0,.25);
+    border-left: 4px solid var(--border);
   }
+  .card[data-child-id="li-yue"] { border-left-color: var(--child-yue); }
+  .card[data-child-id="li-xin"] { border-left-color: var(--child-xin); }
   .card h2 { margin: 0 0 6px; font-size: 1.1rem; }
+  .card[data-child-id="li-yue"] h2 { color: var(--child-yue); }
+  .card[data-child-id="li-xin"] h2 { color: var(--child-xin); }
+  .card h2 span { color: var(--muted) !important; }
   .progress {
     height: 8px; background: #243247; border-radius: 99px; overflow: hidden; margin: 8px 0 12px;
   }
   .progress > i { display: block; height: 100%; background: var(--ok); width: 0%; transition: width .2s; }
+  .card[data-child-id="li-yue"] .progress > i { background: linear-gradient(90deg, #0f9f93, var(--child-yue)); }
+  .card[data-child-id="li-xin"] .progress > i { background: linear-gradient(90deg, #e5486a, var(--child-xin)); }
   .meta { color: var(--muted); font-size: 0.82rem; margin-bottom: 8px; }
   h3 { margin: 12px 0 6px; font-size: 0.8rem; color: var(--warn); }
   ul { list-style: none; padding: 0; margin: 0; }
@@ -50,8 +65,8 @@
   li:first-child { border-top: 0; }
   li.done .title { text-decoration: line-through; color: var(--muted); }
   li.highlight {
-    background: rgba(61, 139, 253, .12); border-radius: 8px;
-    box-shadow: inset 0 0 0 1px rgba(61, 139, 253, .35);
+    background: var(--today-soft); border-radius: 8px;
+    box-shadow: inset 0 0 0 1px rgba(255, 209, 102, .45);
   }
   input[type=checkbox] { width: 18px; height: 18px; margin-top: 2px; accent-color: var(--ok); }
   .title { font-weight: 600; }
@@ -102,12 +117,13 @@
     background: #1a2332; border-color: var(--border);
   }
   .view-tabs button.active {
-    background: #1f4b8f; border-color: #2f6fd4; font-weight: 600;
+    background: linear-gradient(135deg, #1f4b8f, #2563a8); border-color: #3d8bfd; font-weight: 600;
   }
   .view-panel { display: none; margin-bottom: 16px; }
   .view-panel.active { display: block; }
   .overview-card {
-    background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+    background: linear-gradient(180deg, #182636 0%, var(--card) 40%);
+    border: 1px solid var(--border); border-radius: 14px;
     padding: 14px; box-shadow: 0 8px 24px rgba(0,0,0,.25);
   }
   .legend {
@@ -116,12 +132,18 @@
   }
   .legend span { display: inline-flex; align-items: center; gap: 6px; }
   .legend i {
-    display: inline-block; width: 10px; height: 10px; border-radius: 50%;
+    display: inline-block; width: 11px; height: 11px; border-radius: 50%;
+    box-shadow: 0 0 0 2px rgba(255,255,255,.08);
   }
   .legend .dot-yue { background: var(--child-yue); }
   .legend .dot-xin { background: var(--child-xin); }
-  .legend .dot-overdue { background: var(--overdue); border-radius: 2px; width: 12px; height: 8px; }
-  .legend .dot-upcoming { background: var(--upcoming); border-radius: 2px; width: 12px; height: 8px; }
+  .legend .dot-overdue {
+    background: transparent; border: 2px solid var(--overdue); border-radius: 50%;
+    width: 11px; height: 11px; box-shadow: none;
+  }
+  .legend .dot-today {
+    background: var(--today); border-radius: 2px; width: 12px; height: 8px;
+  }
 
   /* Calendar */
   .cal-header {
@@ -139,27 +161,34 @@
     display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px;
   }
   .cal-day {
-    min-height: 52px; padding: 4px 3px; border-radius: 8px;
-    border: 1px solid transparent; background: #141c28; cursor: pointer;
+    min-height: 54px; padding: 4px 3px; border-radius: 10px;
+    border: 1px solid transparent; background: #101a27; cursor: pointer;
     display: flex; flex-direction: column; align-items: stretch;
-    font-size: 0.78rem; transition: border-color .15s, background .15s;
+    font-size: 0.78rem; transition: border-color .15s, background .15s, transform .12s;
   }
-  .cal-day:hover { border-color: var(--border); background: #1c2738; }
-  .cal-day.other-month { opacity: .35; pointer-events: none; }
-  .cal-day.today { border-color: var(--accent); box-shadow: inset 0 0 0 1px rgba(61,139,253,.3); }
-  .cal-day.selected { background: #1f3350; border-color: #2f6fd4; }
-  .cal-day.overdue-day { background: rgba(255,107,107,.08); }
-  .cal-day-num { font-weight: 600; text-align: center; line-height: 1.2; }
+  .cal-day:hover { border-color: var(--border); background: #1a2738; transform: translateY(-1px); }
+  .cal-day.other-month { opacity: .35; pointer-events: none; transform: none; }
+  .cal-day.today {
+    border-color: var(--today);
+    background: var(--today-soft);
+    box-shadow: inset 0 0 0 1px rgba(255, 209, 102, .35);
+  }
+  .cal-day.selected { background: #1f3350; border-color: var(--accent); }
+  .cal-day.overdue-day { background: var(--overdue-soft); }
+  .cal-day-num { font-weight: 700; text-align: center; line-height: 1.2; }
+  .cal-day.today .cal-day-num { color: var(--today); }
   .cal-dots {
-    display: flex; flex-wrap: wrap; gap: 2px; justify-content: center;
-    margin-top: 3px; flex: 1; align-content: flex-start;
+    display: flex; flex-wrap: wrap; gap: 3px; justify-content: center;
+    margin-top: 4px; flex: 1; align-content: flex-start;
   }
   .cal-dot {
-    width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
+    width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0;
   }
   .cal-dot.yue { background: var(--child-yue); }
   .cal-dot.xin { background: var(--child-xin); }
-  .cal-dot.overdue { box-shadow: 0 0 0 1px var(--overdue); }
+  .cal-dot.overdue {
+    outline: 2px solid var(--overdue); outline-offset: 1px;
+  }
   .cal-day-detail {
     margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border);
     font-size: 0.85rem;
@@ -175,9 +204,9 @@
   .cal-item-badge {
     font-size: 10px; padding: 1px 6px; border-radius: 4px; font-weight: 600;
   }
-  .cal-item-badge.yue { background: rgba(61,139,253,.2); color: var(--child-yue); }
-  .cal-item-badge.xin { background: rgba(244,114,182,.2); color: var(--child-xin); }
-  .cal-item-badge.overdue { background: rgba(255,107,107,.2); color: var(--overdue); }
+  .cal-item-badge.yue { background: var(--child-yue-soft); color: var(--child-yue); }
+  .cal-item-badge.xin { background: var(--child-xin-soft); color: var(--child-xin); }
+  .cal-item-badge.overdue { background: var(--overdue-soft); color: var(--overdue); }
 
   /* Gantt */
   .gantt-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
@@ -196,16 +225,16 @@
   .gantt-axis-cell:first-child { border-left: 0; }
   .gantt-today-line {
     position: absolute; top: 0; bottom: 0; width: 2px;
-    background: var(--accent); z-index: 2; pointer-events: none;
+    background: var(--today); z-index: 2; pointer-events: none;
   }
   .gantt-today-label {
-    position: absolute; top: -2px; font-size: 0.65rem; color: var(--accent);
-    transform: translateX(-50%); white-space: nowrap; font-weight: 600;
+    position: absolute; top: -2px; font-size: 0.65rem; color: var(--today);
+    transform: translateX(-50%); white-space: nowrap; font-weight: 700;
   }
   .gantt-group { margin-bottom: 12px; }
   .gantt-group-title {
-    font-size: 0.85rem; font-weight: 600; margin-bottom: 6px;
-    padding-left: 4px;
+    font-size: 0.9rem; font-weight: 700; margin-bottom: 6px;
+    padding-left: 8px; border-left: 3px solid currentColor;
   }
   .gantt-group-title.yue { color: var(--child-yue); }
   .gantt-group-title.xin { color: var(--child-xin); }
@@ -219,16 +248,23 @@
     line-height: 1.25;
   }
   .gantt-track {
-    position: relative; height: 22px; background: #141c28;
-    border-radius: 6px; overflow: visible;
+    position: relative; height: 24px; background: #101a27;
+    border-radius: 7px; overflow: visible;
   }
   .gantt-bar {
-    position: absolute; top: 3px; height: 16px; border-radius: 4px;
-    min-width: 6px; transition: opacity .2s;
+    position: absolute; top: 3px; height: 18px; border-radius: 5px;
+    min-width: 8px; transition: opacity .2s;
   }
-  .gantt-bar.yue { background: var(--child-yue); }
-  .gantt-bar.xin { background: var(--child-xin); }
-  .gantt-bar.overdue { background: var(--overdue); opacity: .85; }
+  .gantt-bar.yue {
+    background: linear-gradient(90deg, #0f9f93, var(--child-yue));
+  }
+  .gantt-bar.xin {
+    background: linear-gradient(90deg, #e5486a, var(--child-xin));
+  }
+  .gantt-bar.overdue {
+    background: linear-gradient(90deg, #d9483b, var(--overdue));
+    opacity: .95;
+  }
   .gantt-bar.done { opacity: .28; }
   .gantt-bar-title {
     position: absolute; left: 4px; top: 50%; transform: translateY(-50%);
@@ -448,7 +484,7 @@ function renderCalendar(data, store) {
       <span><i class="dot-yue"></i>李悅</span>
       <span><i class="dot-xin"></i>李昕</span>
       <span><i class="dot-overdue"></i>已逾期</span>
-      <span><i class="dot-upcoming"></i>未到期</span>
+      <span><i class="dot-today"></i>今日</span>
     </div>
     <div class="cal-header">
       <h2>${monthLabel}</h2>
@@ -616,7 +652,8 @@ function renderGantt(data, store) {
     <div class="legend">
       <span><i class="dot-yue"></i>李悅</span>
       <span><i class="dot-xin"></i>李昕</span>
-      <span>｜藍線＝今日（澳門）</span>
+      <span><i class="dot-overdue"></i>已逾期</span>
+      <span><i class="dot-today"></i>今日</span>
     </div>
     <div class="gantt-wrap">
       <div class="gantt">
