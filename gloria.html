@@ -32,6 +32,10 @@
     <main id="sections"><div class="loading">載入中…</div></main>
     <section class="tl-section" id="tl"></section>
     <section class="shop-section" id="shop"></section>
+    <details class="sync-fold">
+      <summary>☁️ 雲端同步</summary>
+      <div id="sync-panel" class="sync-panel" data-sync-role="child"></div>
+    </details>
   </div>
 
   <div class="donebar">
@@ -40,6 +44,8 @@
   <div class="toast" id="toast"></div>
 
   <script>window.CHILD_ID = 'li-xin';</script>
+  <script src="sync-config.js"></script>
+  <script src="sync.js"></script>
   <script src="assets/child.js"></script>
 </body>
 </html>

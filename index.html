@@ -229,6 +229,20 @@
   .gantt-empty { color: var(--muted); font-size: 0.85rem; padding: 8px 0; }
   footer { margin-top: 20px; color: var(--muted); font-size: 0.8rem; display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; }
   footer a, footer button { font-size: 0.8rem; padding: 4px 8px; }
+  .sync-fold { width: 100%; background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 2px 12px 10px; }
+  .sync-fold > summary { cursor: pointer; padding: 10px 0 6px; font-weight: 600; color: var(--muted); font-size: 0.85rem; list-style: none; }
+  .sync-fold > summary::-webkit-details-marker { display: none; }
+  .sync-fold > summary::before { content: "▸ "; color: var(--accent); }
+  .sync-fold[open] > summary::before { content: "▾ "; }
+  .sync-panel { font-size: 0.82rem; }
+  .sync-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .sync-state { padding: 2px 8px; border-radius: 99px; background: #243247; color: var(--muted); font-size: 0.72rem; font-weight: 700; white-space: nowrap; }
+  .sync-state.connected { background: #1a4a34; color: var(--ok); }
+  .sync-copy, .sync-message { color: var(--muted); font-size: 0.76rem; margin-top: 4px; }
+  .sync-controls { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; align-items: center; }
+  .sync-controls label { color: var(--muted); font-size: 0.76rem; }
+  .sync-controls input { background: #141c28; border: 1px solid var(--border); color: var(--text); border-radius: 8px; padding: 7px 9px; font-size: 0.8rem; min-width: 200px; }
+  .sync-controls button { padding: 7px 9px; font-size: 0.76rem; }
 </style>
 </head>
 <body>
@@ -261,21 +275,38 @@
     </details>
 
     <footer>
-      <span>勾選只存在這台裝置</span>
+      <span id="store-hint">勾選預設存本機，連上雲端後自動同步</span>
       <button id="btnReset" type="button">清除勾選</button>
       <a href="status.json">status.json</a>
+      <details class="sync-fold">
+        <summary>☁️ 雲端同步（選用）</summary>
+        <div id="sync-panel" class="sync-panel" data-sync-role="parent"></div>
+      </details>
     </footer>
   </div>
   <div class="toast" id="toast"></div>
+<script src="sync-config.js"></script>
+<script src="sync.js"></script>
 <script>
 const STORE_KEY = 'puiching-eclass-todos-v1';
+const POINTS_KEY = 'puiching-eclass-points-v1';
 const TZ = 'Asia/Macau';
 const CHILD_COLORS = { 'li-yue': 'yue', 'li-xin': 'xin' };
 
 function loadStore() {
   try { return JSON.parse(localStorage.getItem(STORE_KEY) || '{}'); } catch { return {}; }
 }
-function saveStore(s) { localStorage.setItem(STORE_KEY, JSON.stringify(s)); }
+function saveStore(s) {
+  localStorage.setItem(STORE_KEY, JSON.stringify(s));
+  try { window.PuichingSync && window.PuichingSync.replaceTodos(s); } catch {}
+}
+function loadPoints() {
+  try { return JSON.parse(localStorage.getItem(POINTS_KEY) || '{}'); } catch { return {}; }
+}
+function savePoints(p) {
+  localStorage.setItem(POINTS_KEY, JSON.stringify(p));
+  try { window.PuichingSync && window.PuichingSync.replacePoints(p); } catch {}
+}
 function itemKey(childId, section, it) {
   return [childId, section, it.due || '', it.subject || '', it.title || ''].join('|');
 }
@@ -760,11 +791,24 @@ document.getElementById('btnCopyAll').addEventListener('click', async () => {
 });
 
 document.getElementById('btnReset').addEventListener('click', () => {
-  if (!confirm('清除此瀏覽器全部勾選？')) return;
+  if (!confirm('清除此瀏覽器全部勾選？連上雲端時也會同步清除。')) return;
   localStorage.removeItem(STORE_KEY);
+  try { window.PuichingSync && window.PuichingSync.replaceTodos({}); } catch {}
   load();
   toast('已清除本機勾選');
 });
+
+let __syncReloadT = 0;
+function queueSyncReload() {
+  clearTimeout(__syncReloadT);
+  __syncReloadT = setTimeout(() => { try { load(); } catch {} }, 400);
+}
+try {
+  window.PuichingSync && window.PuichingSync.register({
+    onTodosChanged: () => queueSyncReload(),
+    onPointsChanged: (p) => { try { localStorage.setItem(POINTS_KEY, JSON.stringify(p || {})); } catch {} }
+  });
+} catch {}
 
 setupTabs();
 load();

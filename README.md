@@ -10,7 +10,8 @@
 - **李悅平板：** `abigail.html`
 - **李昕平板：** `gloria.html`
 
-三頁共用 `status.json`；勾選存在本機瀏覽器，不回寫 GitHub。
+三頁共用 `status.json`；勾選預設存在本機瀏覽器，不回寫 GitHub。
+要跨裝置即時同步勾選＋積分，見 [`SYNC_SETUP.md`](SYNC_SETUP.md)接 Firebase（選用，未設定照常用）。
 
 ## 給 Codex／Gemini
 
@@ -32,4 +33,5 @@
 | `status.json` | Agent 機器讀取 |
 | `DASHBOARD.md` | 人類／agent 備援 |
 | `SOP.md` | 操作步驟 |
+| `SYNC_SETUP.md` | 跨裝置同步設定（選用） |
 | `AGENTS.md` | **整套工作流（給任何 agent 開發／接手）** |

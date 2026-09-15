@@ -2,7 +2,8 @@
 
 > 給任何 AI agent（Codex／Gemini／Claude／Grok／Cursor…）接手或二次開發用。  
 > **禁止**把密碼、OTP、session cookie 寫進本 repo。登入憑證只走各執行環境的安全表單／密碼庫。  
-> **溝通語言：與使用者溝通一律用繁體中文。**
+> **溝通語言：與使用者溝通一律用繁體中文。**  
+> 新接手先讀 `MEMORY.md`（現況快照），再讀本檔（工作流）。
 
 | 資源 | URL |
 |---|---|
@@ -22,8 +23,8 @@
 
 1. 掃 eClass 家課表（含**不須繳交**）
 2. 置頂「今日必做」
-3. 更新 `status.json` + `DASHBOARD.md`（只改自己負責的孩子區塊）
-4. 推到 `main` → GitHub Pages
+3. 更新 `status.json` **和** `DASHBOARD.md`（只改自己負責的孩子區塊）。小孩／家長網頁只讀 `status.json`；只改 Markdown 等於沒更新畫面。
+4. 跑 `python3 scripts/validate_status.py`，通過後經 PR 合併到 `main` → GitHub Pages
 5. 繁中短訊通知家長；家長回「清了」才閉環
 
 家長偏好：**日曆／甘特**看進度（已在 `index.html`，預設摺疊）；待辦可勾選（localStorage，不回寫 GitHub）。
@@ -97,9 +98,10 @@
 5. 收集：科目、標題、截止、須繳交否、內容詳情、附件、發出人
 6. 李悅：刪進階*
 7. 分類：今日必做 / 近幾日 / 本週測驗 / 其他
-8. 只覆寫 DASHBOARD.md 與 status.json 裡「自己的孩子」
-9. git commit + push main（或開 PR 後合併）
-10. 繁中 ADHD 短訊：下一步是什麼；請回「清了」
+8. 只覆寫 DASHBOARD.md 與 status.json 裡「自己的孩子」；同一孩子的兩邊內容必須一致
+9. 跑 `python3 scripts/validate_status.py`，通過後再 commit
+10. 開 PR 合併到 `main`（緊急才直接 push `main`）
+11. 繁中 ADHD 短訊：下一步是什麼；請回「清了」
 ```
 
 詳情頁打不開時：至少保留標題＋截止，並標「詳情未取到」。
@@ -150,14 +152,22 @@ Session 過期：`LOGIN_REQUIRED` → 對 **該孩所屬** agent 的對話出安
 
 - 讀 `status.json`
 - 先顯示兩孩待辦清單；**日曆／時程**摺在下方
-- 勾選存 **localStorage**（不回寫 repo）
+- 勾選預設存本機 `localStorage`（不回寫 repo）；頁尾「☁️ 雲端同步」可選接 Firebase 即時同步勾選＋積分
 - 「清了」按鈕複製給家長貼回主 agent
 
 ### `abigail.html` / `gloria.html`
 
-- 各孩平板自管頁；與家長頁共用 `puiching-eclass-todos-v1`
+- 各孩平板自管頁；與家長頁共用 `puiching-eclass-todos-v1`（勾選）＋ `puiching-eclass-points-v1`（積分）
+- 小孩頁不直接信任 `due_today`／`due_soon` 標籤：`assets/child.js` 會按澳門今天重算顯示桶（逾期／今天 → 今天要做，其餘未來 → 快到期；測驗／其他不動）
 - 勾選賺積分，獎勵商店兌換實體零食（需家長兌現）
 - 李昕頁（`gloria.html`）為較大字、無時程圖
+- 頁尾「☁️ 雲端同步」與家長頁用同一組家庭同步碼，同步勾選＋積分（見 `SYNC_SETUP.md`）
+
+### 同步鍵與不變量
+
+- `puiching-eclass-todos-v1`：勾選；`puiching-eclass-points-v1`：積分
+- `puiching-eclass-sync-code-v1`：家庭同步碼；`puiching-eclass-sync-pending-v1`：離線待送
+- 同步只寫勾選＋積分，**不回寫** `status.json`／`DASHBOARD.md`；功課真相仍由掃描更新
 
 開發時改 UI／契約：開 PR 說明如何驗證 Pages；合併 `main` 後硬重新整理。
 
@@ -167,9 +177,9 @@ Session 過期：`LOGIN_REQUIRED` → 對 **該孩所屬** agent 的對話出安
 
 ```bash
 # 在本 repo 工作樹
-# 1) 更新 status.json + DASHBOARD.md（必要時 index.html）
-# 2) 檢查：無密碼、無 cookie
-git add status.json DASHBOARD.md index.html AGENTS.md
+# 1) 更新 status.json + DASHBOARD.md（必要時 index.html / abigail.html / gloria.html / assets/* / sync*）
+# 2) 跑驗證：python3 scripts/validate_status.py；檢查無密碼、無 cookie、無私鑰
+git add status.json DASHBOARD.md index.html abigail.html gloria.html assets/child.js assets/child.css AGENTS.md MEMORY.md
 git commit -m "Update eClass digest YYYY-MM-DD"
 git push origin main
 ```
@@ -202,7 +212,7 @@ Pages 來源：`main` 根目錄。人類驗證：https://samulee003.github.io/pu
 
 1. `status.json` schema 版本化＋簡單 JSON Schema
 2. 日曆／甘特：多月、匯出 ICS、逾期排序
-3. 勾選狀態可選同步（需家長同意；預設仍 localStorage）
+3. ~~勾選＋積分 Firebase 同步~~（已實作；`sync-config.js` 留空時保持本機模式，見 `SYNC_SETUP.md`）
 4. 自動從家課表 HTML 解析的測試夾具（fixtures，無真實密碼）
 5. GitHub Action：validate `status.json` on PR
 6. 勤讀獎進度小工具（週上限 2／目標 20）
@@ -220,10 +230,11 @@ Pages 來源：`main` 根目錄。人類驗證：https://samulee003.github.io/pu
 ## 11. 快速檢查清單（接手 60 秒）
 
 - [ ] 我負責李悅還是李昕？（瀏覽器／帳號不混）
-- [ ] 讀最新 `status.json`／`DASHBOARD.md`
+- [ ] 先讀 `MEMORY.md`，再讀最新 `status.json`／`DASHBOARD.md`
 - [ ] Session 活著？否則 `LOGIN_REQUIRED` 請家長
-- [ ] 掃完只改自己的 JSON／MD 區塊
-- [ ] Push 後打開 Pages 看日曆點是否落在正確日期
+- [ ] 掃完只改自己的 JSON／MD 區塊，且兩邊一致
+- [ ] 跑 `python3 scripts/validate_status.py` 通過
+- [ ] PR 合併到 `main` 後硬重新整理 Pages，看日期與勾選是否正確
 - [ ] 通知家長；等「清了」
 
 ---
@@ -233,6 +244,7 @@ Pages 來源：`main` 根目錄。人類驗證：https://samulee003.github.io/pu
 | 檔 | 用途 |
 |---|---|
 | `AGENTS.md` | 本工作流（給 agents） |
+| `MEMORY.md` | 現況快照（先讀這個） |
 | `SOP.md` | 單次掃描短步驟 |
 | `README.md` | 人類＋agents 入口 |
 | `status.json` | 機器真相 |
@@ -241,5 +253,9 @@ Pages 來源：`main` 根目錄。人類驗證：https://samulee003.github.io/pu
 | `abigail.html` | 李悅平板頁 |
 | `gloria.html` | 李昕平板頁 |
 | `assets/child.js` | 小孩頁共用邏輯（勾選＋積分） |
+| `sync.js` | 勾選＋積分跨裝置同步（Firebase，可選） |
+| `sync-config.js` | Firebase Web config 佔位（禁止放私鑰／密碼） |
+| `firebase.rules.json` | Realtime Database 安全規則範本 |
+| `SYNC_SETUP.md` | 跨裝置同步設定 |
 
-**最後更新說明：** 2026-09-14 — 雙軌甲案、密碼甲＋乙、Pages 日曆＋甘特、17:30 暫停、勤讀獎 eClass=20。
+**最後更新說明：** 2026-09-15 — 功課真相改為 `status.json`＋`DASHBOARD.md` 雙寫；小孩頁按日期重算顯示；勾選＋積分 Firebase 同步已接線（`sync-config.js` 待填）；`MEMORY.md` 為現況快照。

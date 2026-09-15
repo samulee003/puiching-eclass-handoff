@@ -1,0 +1,21 @@
+{
+  "rules": {
+    "rooms": {
+      "$roomId": {
+        ".read": "auth != null",
+        "todos": {
+          "$itemId": {
+            ".write": "auth != null",
+            ".validate": "newData.hasChildren(['key', 'done', 'updatedAt', 'deviceId']) && newData.child('key').isString() && newData.child('done').isBoolean() && newData.child('updatedAt').isNumber() && newData.child('deviceId').isString() && newData.child('deviceId').val() == auth.uid"
+          }
+        },
+        "points": {
+          "$itemId": {
+            ".write": "auth != null",
+            ".validate": "newData.hasChildren(['key', 'data', 'updatedAt', 'deviceId']) && newData.child('key').isString() && newData.child('updatedAt').isNumber() && newData.child('deviceId').isString() && newData.child('deviceId').val() == auth.uid"
+          }
+        }
+      }
+    }
+  }
+}

@@ -38,7 +38,10 @@
     try { return JSON.parse(localStorage.getItem(STORE_KEY) || '{}'); }
     catch (e) { return {}; }
   }
-  function saveStore(s) { localStorage.setItem(STORE_KEY, JSON.stringify(s)); }
+  function saveStore(s) {
+    localStorage.setItem(STORE_KEY, JSON.stringify(s));
+    try { window.PuichingSync && window.PuichingSync.replaceTodos(s); } catch (e) {}
+  }
 
   // Points state is per-child and per-device (localStorage). Points are awarded the
   // first time a task is checked and are NOT removed on uncheck, so children cannot
@@ -47,7 +50,10 @@
     try { return JSON.parse(localStorage.getItem(POINTS_KEY) || '{}'); }
     catch (e) { return {}; }
   }
-  function savePoints(p) { localStorage.setItem(POINTS_KEY, JSON.stringify(p)); }
+  function savePoints(p) {
+    localStorage.setItem(POINTS_KEY, JSON.stringify(p));
+    try { window.PuichingSync && window.PuichingSync.replacePoints(p); } catch (e) {}
+  }
 
   function pointsState() {
     var all = loadPoints();
@@ -178,6 +184,31 @@
   }
 
   var DATA = null;
+  var SYNC_REGISTERED = false;
+
+  function currentChild() {
+    if (!DATA) return null;
+    var list = (DATA.children || []).filter(function (c) { return c.id === CHILD_ID; });
+    return list[0] || null;
+  }
+
+  function rerenderFromSync() {
+    var child = currentChild();
+    if (child) render(child);
+  }
+
+  function registerSync() {
+    if (SYNC_REGISTERED) return;
+    SYNC_REGISTERED = true;
+    try {
+      if (window.PuichingSync && window.PuichingSync.register) {
+        window.PuichingSync.register({
+          onTodosChanged: function () { rerenderFromSync(); },
+          onPointsChanged: function () { rerenderFromSync(); }
+        });
+      }
+    } catch (e) {}
+  }
 
   // A kid-friendly Gantt: each near-term homework item is a bar running up to its
   // due date, with a "today" line, so children can see how much time they have.
@@ -414,20 +445,34 @@
     ul.appendChild(li);
   }
 
+  function displayBucket(secKey, it, today) {
+    if (secKey === 'tests_this_week' || secKey === 'other') return secKey;
+    var due = parseYmd(it.due);
+    if (!due) return secKey;
+    return daysBetween(today, due) <= 0 ? 'due_today' : 'due_soon';
+  }
+
   function render(child) {
     var store = loadStore();
     var today = parseYmd(todayMacau());
     var root = document.getElementById('sections');
     root.innerHTML = '';
 
+    var buckets = { due_today: [], due_soon: [], tests_this_week: [], other: [] };
+    sectionItems(child).forEach(function (pair) {
+      pair[1].forEach(function (it) {
+        buckets[displayBucket(pair[0], it, today)].push({ secKey: pair[0], it: it });
+      });
+    });
+
     SECTIONS.forEach(function (secDef) {
       var secKey = secDef[0], label = secDef[1], emoji = secDef[2];
-      var items = child[secKey] || [];
+      var items = buckets[secKey] || [];
       if (!items.length) return;
 
       var sec = el('div', 'section');
       var ul = el('ul', 'tasks');
-      items.forEach(function (it) { appendTask(ul, child, secKey, it, store, today); });
+      items.forEach(function (row) { appendTask(ul, child, row.secKey, row.it, store, today); });
 
       if (secKey === 'other') {
         var det = el('details', 'more-fold');
@@ -521,6 +566,7 @@
         document.getElementById('btn-done').addEventListener('click', function () {
           onDoneClick(child);
         });
+        registerSync();
       })
       .catch(function (e) {
         document.getElementById('sections').innerHTML =
@@ -528,5 +574,8 @@
       });
   }
 
-  document.addEventListener('DOMContentLoaded', load);
+  document.addEventListener('DOMContentLoaded', function () {
+    registerSync();
+    load();
+  });
 })();
