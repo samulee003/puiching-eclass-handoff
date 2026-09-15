@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>培正家長 DASHBOARD</title>
-<meta name="description" content="給家長查看李悅和李昕功課進度的 DASHBOARD" />
+<title>培正功課待辦看板</title>
+<meta name="description" content="Checkable homework todos for Abigail (李悅) and Gloria (李昕)" />
 <style>
   :root {
     --bg: #0f1419; --card: #1a2332; --text: #e7ecf3; --muted: #8b9bb4;
@@ -16,18 +16,45 @@
   body {
     margin: 0; font-family: ui-sans-serif, system-ui, -apple-system, "Noto Sans TC", sans-serif;
     background: radial-gradient(1200px 600px at 10% -10%, #1b2a44, var(--bg));
-    color: var(--text); line-height: 1.45; padding: 20px 14px 80px;
+    color: var(--text); line-height: 1.45; padding: 20px 14px 64px;
   }
   .wrap { max-width: 920px; margin: 0 auto; }
-  h1 { font-size: 1.4rem; margin: 0 0 4px; }
-  .sub { color: var(--muted); font-size: 0.92rem; margin-bottom: 14px; }
-  .actions { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0 16px; }
+  .topbar {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    gap: 12px; flex-wrap: wrap; margin-bottom: 16px;
+  }
+  h1 { font-size: 1.35rem; margin: 0 0 2px; }
+  .sub { color: var(--muted); font-size: 0.85rem; }
+  .actions { display: flex; flex-wrap: wrap; gap: 8px; }
   .actions a, button {
     text-decoration: none; background: #243247; color: var(--text); padding: 8px 12px;
-    border-radius: 10px; border: 1px solid var(--border); font-size: 0.9rem; cursor: pointer;
+    border-radius: 10px; border: 1px solid var(--border); font-size: 0.88rem; cursor: pointer;
   }
   button.primary { background: #1f4b8f; border-color: #2f6fd4; }
   button.ok { background: #1a4a34; border-color: #2f8a5a; }
+  .child-link { font-weight: 600; font-size: 0.82rem; padding: 6px 10px; }
+  .child-link.yue { background: rgba(61,139,253,.18); border-color: #2f6fd4; color: #cfe1ff; }
+  .child-link.xin { background: rgba(244,114,182,.16); border-color: #b84a86; color: #ffd6ec; }
+  .card-head {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    gap: 8px; flex-wrap: wrap; margin-bottom: 4px;
+  }
+  .card-head h2 { margin: 0; }
+  details.more { margin-top: 10px; color: var(--muted); font-size: 0.85rem; }
+  details.more summary { cursor: pointer; padding: 6px 0; }
+  details.more ul { margin-top: 4px; }
+  .time-fold {
+    margin-top: 22px; background: var(--card); border: 1px solid var(--border);
+    border-radius: 14px; padding: 4px 14px 14px;
+  }
+  .time-fold > summary {
+    cursor: pointer; list-style: none; padding: 12px 0 8px;
+    color: var(--muted); font-size: 0.92rem; font-weight: 600;
+  }
+  .time-fold > summary::-webkit-details-marker { display: none; }
+  .time-fold > summary::before { content: "▸ "; color: var(--accent); }
+  .time-fold[open] > summary::before { content: "▾ "; }
+  .time-fold .view-tabs { margin-top: 6px; }
   .grid { display: grid; gap: 14px; }
   @media (min-width: 800px) { .grid { grid-template-columns: 1fr 1fr; } }
   .card {
@@ -64,33 +91,6 @@
     background: #143528; color: var(--ok); border: 1px solid #2f8a5a;
     padding: 10px 14px; border-radius: 10px; display: none; z-index: 9;
   }
-  .sync-panel {
-    margin: 10px 0 16px; padding: 12px 14px; border: 1px solid var(--border);
-    border-radius: 14px; background: rgba(26,35,50,.88);
-  }
-  .sync-header {
-    display: flex; align-items: center; justify-content: space-between; gap: 8px;
-    font-size: .9rem;
-  }
-  .sync-state {
-    padding: 2px 7px; border-radius: 999px; background: #243247;
-    color: var(--muted); font-size: .72rem; font-weight: 600; white-space: nowrap;
-  }
-  .sync-state.connected { background: #1a4a34; color: var(--ok); }
-  .sync-copy, .sync-message { color: var(--muted); font-size: .78rem; }
-  .sync-copy { margin-top: 4px; }
-  .sync-message { margin-top: 8px; }
-  .sync-controls {
-    display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 9px;
-  }
-  .sync-controls label { color: var(--muted); font-size: .78rem; }
-  .sync-controls input {
-    min-width: 190px; flex: 1; padding: 7px 9px; border: 1px solid var(--border);
-    border-radius: 8px; background: #141c28; color: var(--text); font: inherit;
-    font-size: .82rem; letter-spacing: .08em;
-  }
-  .sync-controls button { padding: 7px 9px; font-size: .78rem; }
-  footer { margin-top: 24px; color: var(--muted); font-size: 0.82rem; }
   a { color: var(--accent); }
 
   /* Tabs */
@@ -106,10 +106,6 @@
   }
   .view-panel { display: none; margin-bottom: 16px; }
   .view-panel.active { display: block; }
-  .overview-card {
-    background: var(--card); border: 1px solid var(--border); border-radius: 14px;
-    padding: 14px; box-shadow: 0 8px 24px rgba(0,0,0,.25);
-  }
   .legend {
     display: flex; flex-wrap: wrap; gap: 10px 16px; font-size: 0.8rem;
     color: var(--muted); margin-bottom: 12px;
@@ -230,54 +226,47 @@
   .gantt-bar.xin { background: var(--child-xin); }
   .gantt-bar.overdue { background: var(--overdue); opacity: .85; }
   .gantt-bar.done { opacity: .28; }
-  .gantt-bar-title {
-    position: absolute; left: 4px; top: 50%; transform: translateY(-50%);
-    font-size: 0.65rem; color: #fff; white-space: nowrap;
-    overflow: hidden; text-overflow: ellipsis; max-width: calc(100% - 8px);
-    pointer-events: none; text-shadow: 0 1px 2px rgba(0,0,0,.5);
-  }
   .gantt-empty { color: var(--muted); font-size: 0.85rem; padding: 8px 0; }
-  .section-heading {
-    font-size: 0.9rem; color: var(--muted); margin: 18px 0 10px;
-    padding-bottom: 6px; border-bottom: 1px solid var(--border);
-  }
+  footer { margin-top: 20px; color: var(--muted); font-size: 0.8rem; display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; }
+  footer a, footer button { font-size: 0.8rem; padding: 4px 8px; }
 </style>
 </head>
 <body>
   <div class="wrap">
-    <h1>培正家長 DASHBOARD</h1>
-    <div class="sub">家長查看全局進度 · 勾選＝本機完成 · 小孩請使用平板學習頁</div>
-    <div class="actions">
-      <button class="primary" id="btnCopyAll">複製今日「清了」給 Grok</button>
-      <button id="btnReset">清除本機勾選</button>
-      <a href="kids.html">小孩平板學習頁</a>
-      <a href="status.json">status.json</a>
-      <a href="https://eclass.puiching.edu.mo/templates/" target="_blank" rel="noopener">開 eClass</a>
-    </div>
-    <div id="updated" class="sub"></div>
-    <div id="sync-panel" class="sync-panel" data-sync-role="parent"></div>
+    <header class="topbar">
+      <div>
+        <h1>培正功課</h1>
+        <div id="updated" class="sub">載入中…</div>
+      </div>
+      <div class="actions">
+        <button class="primary" id="btnCopyAll">複製今日摘要</button>
+        <a href="https://eclass.puiching.edu.mo/templates/" target="_blank" rel="noopener">開 eClass</a>
+      </div>
+    </header>
 
-    <div class="view-tabs" role="tablist">
-      <button type="button" class="active" data-tab="calendar" role="tab" aria-selected="true">日曆</button>
-      <button type="button" data-tab="gantt" role="tab" aria-selected="false">時程甘特</button>
-    </div>
-    <div id="panel-calendar" class="view-panel active overview-card" role="tabpanel">
-      <div id="calendar-root"><div class="sub">載入中…</div></div>
-    </div>
-    <div id="panel-gantt" class="view-panel overview-card" role="tabpanel">
-      <div id="gantt-root"><div class="sub">載入中…</div></div>
-    </div>
-
-    <div class="section-heading">待辦清單</div>
     <div id="app" class="grid"><div class="card">載入中…</div></div>
+
+    <details class="time-fold">
+      <summary>日曆與時程</summary>
+      <div class="view-tabs" role="tablist">
+        <button type="button" class="active" data-tab="calendar" role="tab" aria-selected="true">日曆</button>
+        <button type="button" data-tab="gantt" role="tab" aria-selected="false">時程</button>
+      </div>
+      <div id="panel-calendar" class="view-panel active" role="tabpanel">
+        <div id="calendar-root"><div class="sub">載入中…</div></div>
+      </div>
+      <div id="panel-gantt" class="view-panel" role="tabpanel">
+        <div id="gantt-root"><div class="sub">載入中…</div></div>
+      </div>
+    </details>
+
     <footer>
-      勾選存在此瀏覽器（localStorage），不會自動改 GitHub。<br />
-      做完請按「清了」或回 Grok：「李悅清了」「李昕清了」。
+      <span>勾選只存在這台裝置</span>
+      <button id="btnReset" type="button">清除勾選</button>
+      <a href="status.json">status.json</a>
     </footer>
   </div>
   <div class="toast" id="toast"></div>
-  <script src="sync-config.js"></script>
-  <script src="sync.js"></script>
 <script>
 const STORE_KEY = 'puiching-eclass-todos-v1';
 const TZ = 'Asia/Macau';
@@ -286,10 +275,7 @@ const CHILD_COLORS = { 'li-yue': 'yue', 'li-xin': 'xin' };
 function loadStore() {
   try { return JSON.parse(localStorage.getItem(STORE_KEY) || '{}'); } catch { return {}; }
 }
-function saveStore(s) {
-  localStorage.setItem(STORE_KEY, JSON.stringify(s));
-  window.PuichingSync?.replaceTodos(s);
-}
+function saveStore(s) { localStorage.setItem(STORE_KEY, JSON.stringify(s)); }
 function itemKey(childId, section, it) {
   return [childId, section, it.due || '', it.subject || '', it.title || ''].join('|');
 }
@@ -301,6 +287,19 @@ function toast(msg) {
 
 function todayMacau() {
   return new Intl.DateTimeFormat('en-CA', { timeZone: TZ }).format(new Date());
+}
+
+function formatUpdated(iso) {
+  if (!iso) return '尚未更新';
+  try {
+    const d = new Date(iso);
+    const date = new Intl.DateTimeFormat('zh-Hant', {
+      timeZone: TZ, month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false
+    }).format(d);
+    return '更新 ' + date;
+  } catch {
+    return '更新 ' + iso;
+  }
 }
 
 function parseYmd(s) {
@@ -447,8 +446,6 @@ function renderCalendar(data, store) {
     <div class="legend">
       <span><i class="dot-yue"></i>李悅</span>
       <span><i class="dot-xin"></i>李昕</span>
-      <span><i class="dot-overdue"></i>已逾期</span>
-      <span><i class="dot-upcoming"></i>未到期</span>
     </div>
     <div class="cal-header">
       <h2>${monthLabel}</h2>
@@ -603,9 +600,7 @@ function renderGantt(data, store) {
           <div class="gantt-label" title="${row.item.title}">${label}</div>
           <div class="gantt-track">
             <div class="gantt-bar ${cls}${overdue ? ' overdue' : ''}${done ? ' done' : ''}"
-              style="left:${left}%;width:${width}%">
-              <span class="gantt-bar-title">${label}</span>
-            </div>
+              style="left:${left}%;width:${width}%" title="${row.item.title}"></div>
           </div>
         </div>`;
     }
@@ -616,7 +611,7 @@ function renderGantt(data, store) {
     <div class="legend">
       <span><i class="dot-yue"></i>李悅</span>
       <span><i class="dot-xin"></i>李昕</span>
-      <span>｜藍線＝今日（澳門）</span>
+      <span>藍線＝今天</span>
     </div>
     <div class="gantt-wrap">
       <div class="gantt">
@@ -655,6 +650,10 @@ function setupTabs() {
   });
 }
 
+function childPageHref(id) {
+  return id === 'li-xin' ? 'gloria.html' : 'abigail.html';
+}
+
 async function load() {
   const app = document.getElementById('app');
   const store = loadStore();
@@ -662,8 +661,12 @@ async function load() {
     const res = await fetch('status.json?ts=' + Date.now());
     const data = await res.json();
     window.__DATA = data;
+    const openToday = (data.children || []).map(c => {
+      const n = (c.due_today || []).length;
+      return c.zh + ' ' + n + ' 項';
+    }).join(' · ');
     document.getElementById('updated').textContent =
-      '更新：' + (data.updated_at || '—') + ' · ' + (data.timezone || TZ);
+      formatUpdated(data.updated_at) + (openToday ? ' · 今日 ' + openToday : '');
     refreshViews(data);
     app.innerHTML = '';
     for (const child of data.children || []) {
@@ -672,9 +675,13 @@ async function load() {
       card.dataset.childId = child.id;
       const { total, done } = childProgress(child, store);
       const pct = total ? Math.round(done * 100 / total) : 0;
+      const pageCls = child.id === 'li-xin' ? 'xin' : 'yue';
       card.innerHTML = `
-        <h2>${child.zh} <span style="font-weight:500;color:#8b9bb4">／ ${child.en} · ${child.grade}</span></h2>
-        <div class="meta"><span class="doneCount">${done}</span>／${total} 完成 · 負責人 ${child.owner || '—'}</div>
+        <div class="card-head">
+          <h2>${child.zh} <span style="font-weight:500;color:#8b9bb4">${child.grade}</span></h2>
+          <a class="child-link ${pageCls}" href="${childPageHref(child.id)}">平板頁</a>
+        </div>
+        <div class="meta"><span class="doneCount">${done}</span>／${total} 完成</div>
         <div class="progress"><i style="width:${pct}%"></i></div>
         <div class="actions" style="margin:0 0 8px">
           <button class="ok btnChildClear" type="button">複製「${child.zh}清了」</button>
@@ -697,6 +704,18 @@ async function load() {
       };
       for (const [sec, label, items] of sectionItems(child)) {
         if (!items.length) continue;
+        if (sec === 'other') {
+          const det = document.createElement('details');
+          det.className = 'more';
+          const sum = document.createElement('summary');
+          sum.textContent = '其他 ' + items.length + ' 項';
+          det.appendChild(sum);
+          const ul = document.createElement('ul');
+          for (const it of items) ul.appendChild(renderItem(child.id, sec, it, store, onToggle).li);
+          det.appendChild(ul);
+          card.appendChild(det);
+          continue;
+        }
         const h = document.createElement('h3');
         h.textContent = label;
         card.appendChild(h);
@@ -742,14 +761,11 @@ document.getElementById('btnCopyAll').addEventListener('click', async () => {
 
 document.getElementById('btnReset').addEventListener('click', () => {
   if (!confirm('清除此瀏覽器全部勾選？')) return;
-  saveStore({});
+  localStorage.removeItem(STORE_KEY);
   load();
   toast('已清除本機勾選');
 });
 
-window.PuichingSync?.register({
-  onTodosChanged: () => { if (window.__DATA) load(); }
-});
 setupTabs();
 load();
 </script>

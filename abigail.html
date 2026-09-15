@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>李悅的功課</title>
+<meta name="description" content="李悅（Abigail）自己的功課待辦頁" />
+<link rel="stylesheet" href="assets/child.css" />
+</head>
+<body data-accent="yue">
+  <div class="wrap">
+    <div class="topnav"><a href="index.html">家長總覽 →</a></div>
+    <header class="hero">
+      <div class="hero-top">
+        <div class="avatar" id="avatar">🦊</div>
+        <div class="hero-title">
+          <h1><span id="child-name">李悅</span>的功課</h1>
+          <div class="who" id="child-who">Abigail · P3</div>
+        </div>
+        <div class="points-pill" title="我的積分">⭐ <span id="points">0</span></div>
+      </div>
+      <div class="progress-box">
+        <div class="progress-line">
+          <span class="progress-count" id="progress-count">— / —</span>
+          <span class="encourage" id="encourage"></span>
+        </div>
+        <div class="bar"><i id="bar-fill"></i></div>
+      </div>
+      <div class="updated" id="updated"></div>
+    </header>
+
+    <main id="sections"><div class="loading">載入中…</div></main>
+    <section class="tl-section" id="tl"></section>
+    <section class="shop-section" id="shop"></section>
+  </div>
+
+  <div class="donebar">
+    <button type="button" id="btn-done">我做完了！🎉</button>
+  </div>
+  <div class="toast" id="toast"></div>
+
+  <script>window.CHILD_ID = 'li-yue';</script>
+  <script src="assets/child.js"></script>
+</body>
+</html>

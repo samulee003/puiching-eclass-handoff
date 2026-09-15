@@ -1,0 +1,16 @@
+{
+  "name": "培正 eClass 功課看板",
+  "ports": [
+    {
+      "name": "static web",
+      "port": 8000
+    }
+  ],
+  "terminals": [
+    {
+      "name": "web",
+      "command": "python3 -m http.server 8000 --bind 0.0.0.0",
+      "description": "Serves the static dashboard (index.html + status.json) at http://localhost:8000"
+    }
+  ]
+}

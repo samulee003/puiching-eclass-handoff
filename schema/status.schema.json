@@ -1,0 +1,94 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://samulee003.github.io/puiching-eclass-handoff/schema/status.schema.json",
+  "title": "培正 eClass 功課看板 status.json",
+  "description": "Machine-readable homework state consumed by the dashboard pages and by agents.",
+  "type": "object",
+  "required": ["schema_version", "updated_at", "timezone", "children"],
+  "properties": {
+    "schema_version": { "type": "string" },
+    "updated_at": {
+      "type": "string",
+      "description": "ISO-8601 UTC timestamp, e.g. 2026-09-14T08:08:36Z.",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?(Z|[+-]\\d{2}:\\d{2})$"
+    },
+    "timezone": { "type": "string" },
+    "repo": { "type": "string" },
+    "rules": { "type": "object" },
+    "rewards": {
+      "type": "object",
+      "description": "Reward-points config: how many points each completed task earns, an optional all-done daily bonus, and the snack catalog children can redeem.",
+      "properties": {
+        "points_per_task": { "type": "integer", "minimum": 0 },
+        "all_done_bonus": { "type": "integer", "minimum": 0 },
+        "note": { "type": "string" },
+        "catalog": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "name", "cost"],
+            "properties": {
+              "id": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+              "name": { "type": "string", "minLength": 1 },
+              "emoji": { "type": "string" },
+              "cost": { "type": "integer", "minimum": 1 }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "scan_schedule_macau": { "type": "object" },
+    "ui": { "type": "object" },
+    "children": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/definitions/child" }
+    }
+  },
+  "additionalProperties": true,
+  "definitions": {
+    "item": {
+      "type": "object",
+      "required": ["subject", "title", "due"],
+      "properties": {
+        "subject": { "type": "string", "minLength": 1 },
+        "title": { "type": "string", "minLength": 1 },
+        "due": {
+          "type": "string",
+          "description": "Due date in YYYY-MM-DD.",
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+        },
+        "submit_required": { "type": "boolean" },
+        "note": { "type": "string" },
+        "detail": { "type": "string" },
+        "progress": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "child": {
+      "type": "object",
+      "required": ["id", "en", "zh", "grade"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Stable child id such as li-yue or li-xin.",
+          "pattern": "^[a-z0-9-]+$"
+        },
+        "en": { "type": "string", "minLength": 1 },
+        "zh": { "type": "string", "minLength": 1 },
+        "grade": { "type": "string", "minLength": 1 },
+        "owner": { "type": "string" },
+        "due_today": { "type": "array", "items": { "$ref": "#/definitions/item" } },
+        "due_soon": { "type": "array", "items": { "$ref": "#/definitions/item" } },
+        "tests_this_week": { "type": "array", "items": { "$ref": "#/definitions/item" } },
+        "other": { "type": "array", "items": { "$ref": "#/definitions/item" } },
+        "cleared": { "type": "boolean" },
+        "chrome_password_saved": { "type": "boolean" },
+        "login_note": { "type": "string" }
+      },
+      "additionalProperties": true
+    }
+  }
+}
