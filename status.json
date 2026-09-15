@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "updated_at": "2026-09-14T08:08:36Z",
+  "updated_at": "2026-09-15T09:52:17Z",
   "timezone": "Asia/Macau",
   "repo": "https://github.com/samulee003/puiching-eclass-handoff",
   "rules": {
@@ -19,46 +19,75 @@
       "owner": "grok-liubei",
       "due_today": [
         {
-          "subject": "英文",
-          "title": "Spelling challenge (p.27 List 1)",
-          "due": "2026-09-14",
-          "submit_required": false,
-          "note": "易漏"
-        },
-        {
-          "subject": "英文",
-          "title": "Study+chop U2 vocab 20–26；listening PL2",
-          "due": "2026-09-14",
-          "submit_required": true
-        },
-        {
-          "subject": "英文",
-          "title": "Do Wb. p.14（Miss Valentina）",
-          "due": "2026-09-14",
-          "submit_required": true
-        },
-        {
-          "subject": "英文",
-          "title": "Do Wb. p.14（Ms. Au Ieong）",
+          "subject": "中文",
+          "title": "第3課習作",
           "due": "2026-09-15",
-          "submit_required": false
+          "submit_required": true
+        },
+        {
+          "subject": "數學",
+          "title": "梁：習作6（p.14）",
+          "due": "2026-09-15",
+          "submit_required": true,
+          "note": "完成習作第六課第14頁"
+        },
+        {
+          "subject": "英文",
+          "title": "(Ms. Au Ieong) Do Wb. p.14",
+          "due": "2026-09-15",
+          "submit_required": false,
+          "note": "不用交，今日做"
+        },
+        {
+          "subject": "英文",
+          "title": "(Miss Valentina) Do Wb. p.16",
+          "due": "2026-09-15",
+          "submit_required": true
+        }
+      ],
+      "due_soon": [
+        {
+          "subject": "數學",
+          "title": "呂：周四交習作6",
+          "due": "2026-09-16",
+          "submit_required": true,
+          "note": "先做按「邊」分類三角形；按「角」周三堂內完成"
+        },
+        {
+          "subject": "英文",
+          "title": "(Ms. Au Ieong) Do Wb. p.16",
+          "due": "2026-09-16",
+          "submit_required": true
+        },
+        {
+          "subject": "英文",
+          "title": "Correct Spelling Challenge / S.C. on Monday (List 2)",
+          "due": "2026-09-20",
+          "submit_required": true
+        },
+        {
+          "subject": "中文",
+          "title": "22/9前背第三課2、3段",
+          "due": "2026-09-22",
+          "submit_required": true
         }
       ],
       "tests_this_week": [
         {
           "subject": "英文",
-          "title": "Quiz 1 on 17/9",
+          "title": "Quiz 1 on 17/9 (Thur)",
           "due": "2026-09-17",
           "submit_required": true,
-          "detail": "Present Simple/Continuous/Past WS1–3 + Reading"
+          "detail": "Present Simple／Present Continuous／Past Tense（Worksheet 1–3）＋Reading Comprehension"
         }
       ],
       "other": [
         {
           "subject": "中文",
-          "title": "第七周口試第一段（愛國愛澳）",
+          "title": "第七周隨堂進行第一段口試（愛國愛澳）",
           "due": "2026-10-16",
-          "submit_required": true
+          "submit_required": true,
+          "detail": "3分鐘內；粵語／普通話；繪本／改編／自創"
         },
         {
           "subject": "中文",
