@@ -179,14 +179,11 @@ class TestFeature04FirebaseJsonConfig(unittest.TestCase):
     """Tests for F-04: firebase.json Configuration."""
 
     def test_firebase_json_schema_when_present(self):
-        """If firebase.json exists, it must map database rules to firebase.rules.json."""
-        if FIREBASE_JSON.exists():
-            data = json.loads(FIREBASE_JSON.read_text(encoding="utf-8"))
-            self.assertIn("database", data)
-            self.assertEqual(data["database"].get("rules"), "firebase.rules.json")
-        else:
-            # Document expected structure
-            self.assertTrue(True)
+        """firebase.json must map database rules to firebase.rules.json."""
+        self.assertTrue(FIREBASE_JSON.exists(), "firebase.json should exist")
+        data = json.loads(FIREBASE_JSON.read_text(encoding="utf-8"))
+        self.assertIn("database", data)
+        self.assertEqual(data["database"].get("rules"), "firebase.rules.json")
 
     def test_firebase_json_declares_database_target(self):
         """firebase.json or setup documentation defines database rules file."""
@@ -237,7 +234,7 @@ class TestFeature05ParentQRCodeGeneration(unittest.TestCase):
         assets_dir = ROOT / "assets"
         has_qr_asset = (assets_dir / "qrcode.min.js").exists() or (assets_dir / "qrcode.js").exists()
         has_inline_qr = "QRCode" in SYNC_JS.read_text(encoding="utf-8") or "QRCode" in INDEX_HTML.read_text(encoding="utf-8")
-        self.assertTrue(has_qr_asset or has_inline_qr or True)
+        self.assertTrue(has_qr_asset or has_inline_qr)
 
     def test_qr_code_payload_format(self):
         """QR code payload must encode an absolute or relative pairing URL with sync parameter."""

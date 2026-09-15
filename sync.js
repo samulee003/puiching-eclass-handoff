@@ -753,8 +753,8 @@
     try {
       var search = window.location.search || '';
       var hash = window.location.hash || '';
-      var match = search.match(/[?&](?:sync|familyCode|code)=([A-Za-z0-9-]+)/i) ||
-                  hash.match(/[#&](?:sync|familyCode|code)=([A-Za-z0-9-]+)/i);
+      var match = search.match(/[?&](?:sync|familyCode|familyId|code)=([A-Za-z0-9-]+)/i) ||
+                  hash.match(/[#&](?:sync|familyCode|familyId|code)=([A-Za-z0-9-]+)/i);
       if (!match) return null;
       var raw = match[1];
       var normalized = normalizeCode(raw);
@@ -762,10 +762,10 @@
 
       // Address bar sanitization: immediately strip sensitive sync code from browser history and URL bar
       if (window.history && window.history.replaceState) {
-        var cleanSearch = search.replace(/([?&])(?:sync|familyCode|code)=[^&]*(&|$)/i, function (m, p1, p2) {
+        var cleanSearch = search.replace(/([?&])(?:sync|familyCode|familyId|code)=[^&]*(&|$)/i, function (m, p1, p2) {
           return p2 ? p1 : '';
         }).replace(/[?&]$/, '');
-        var cleanHash = hash.replace(/([#&])(?:sync|familyCode|code)=[^&]*(&|$)/i, function (m, p1, p2) {
+        var cleanHash = hash.replace(/([#&])(?:sync|familyCode|familyId|code)=[^&]*(&|$)/i, function (m, p1, p2) {
           return p2 ? p1 : '';
         }).replace(/[#&]$/, '');
         var cleanUrl = window.location.pathname + cleanSearch + cleanHash;

@@ -231,8 +231,7 @@ class TestFeature26AutomatedComplianceValidation(unittest.TestCase):
             errors = list(v.iter_errors(bad_item))
             self.assertTrue(len(errors) >= 1)
         except ImportError:
-            # Fallback assertion if jsonschema not installed
-            self.assertTrue(True)
+            self.skipTest("jsonschema is not installed")
 
     def test_validator_fails_on_unparseable_updated_at(self):
         """Validator flags malformed updated_at timestamp."""

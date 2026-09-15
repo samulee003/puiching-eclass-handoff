@@ -56,12 +56,17 @@ TEST_KEYWORDS = (
 
 LOGIN_FAILURE_INDICATORS = (
     "登入失敗",
+    "登入逾時",
+    "請先登入",
+    "未登入",
+    "重新輸入帳號密碼",
     "用戶名稱或密碼不正確",
     "invalid username or password",
     "會話已過期",
     "session timeout",
     "session expired",
     "請重新登入",
+    "login.php",
 )
 
 
