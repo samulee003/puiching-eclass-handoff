@@ -619,8 +619,13 @@
     document.body.removeChild(ta);
   }
 
-  function load() {
-    fetch('status.json?ts=' + Date.now())
+  var BTN_DONE_ATTACHED = false;
+
+  function load(isManualRefresh) {
+    var btn = document.getElementById('btnRefreshData');
+    if (btn) btn.classList.add('spinning');
+
+    fetch('status.json?ts=' + Date.now(), { cache: 'no-store' })
       .then(function (r) { return r.json(); })
       .then(function (data) {
         DATA = data;
@@ -643,21 +648,41 @@
         document.getElementById('updated').textContent = (function () {
           if (!data.updated_at) return '';
           try {
-            return new Intl.DateTimeFormat('zh-Hant', {
+            var formatted = new Intl.DateTimeFormat('zh-Hant', {
               timeZone: TZ, month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false
             }).format(new Date(data.updated_at));
+            return '🕒 課表更新時間：' + formatted;
           } catch (e) { return ''; }
         })();
         render(child);
 
-        document.getElementById('btn-done').addEventListener('click', function () {
-          onDoneClick(child);
-        });
+        if (!BTN_DONE_ATTACHED) {
+          BTN_DONE_ATTACHED = true;
+          document.getElementById('btn-done').addEventListener('click', function () {
+            var c = currentChild();
+            if (c) onDoneClick(c);
+          });
+        }
         registerSync();
+
+        if (isManualRefresh) {
+          try {
+            if (window.PuichingSync && window.PuichingSync.syncNow) {
+              window.PuichingSync.syncNow();
+            }
+          } catch (e) {}
+          toast('🔄 功課已更新至最新！');
+        }
       })
       .catch(function (e) {
         document.getElementById('sections').innerHTML =
           '<div class="empty">讀不到功課資料 😢（' + e.message + '）</div>';
+      })
+      .then(function () {
+        var btn = document.getElementById('btnRefreshData');
+        if (btn) {
+          setTimeout(function () { btn.classList.remove('spinning'); }, 500);
+        }
       });
   }
 
@@ -727,6 +752,14 @@
   }
 
   document.addEventListener('DOMContentLoaded', function () {
+    var refreshBtn = document.getElementById('btnRefreshData');
+    if (refreshBtn) {
+      refreshBtn.onclick = function (e) {
+        e.preventDefault();
+        load(true);
+      };
+    }
+
     var badge = document.getElementById('childSyncBadge');
     if (badge) {
       badge.onclick = function (e) {

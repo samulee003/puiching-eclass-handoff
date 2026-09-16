@@ -3,6 +3,9 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+<meta http-equiv="Pragma" content="no-cache" />
+<meta http-equiv="Expires" content="0" />
 <title>培正功課待辦看板</title>
 <meta name="description" content="Checkable homework todos for Abigail (李悅) and Gloria (李昕)" />
 <style>
@@ -569,9 +572,9 @@
       </div>
     </div>
   </div>
-<script src="sync-config.js?v=20260916-02"></script>
-<script src="assets/qrcode.min.js?v=20260916-02"></script>
-<script src="sync.js?v=20260916-02"></script>
+<script src="sync-config.js?v=20260916-03"></script>
+<script src="assets/qrcode.min.js?v=20260916-03"></script>
+<script src="sync.js?v=20260916-03"></script>
 <script>
 const STORE_KEY = 'puiching-eclass-todos-v1';
 const POINTS_KEY = 'puiching-eclass-points-v1';
@@ -1010,7 +1013,7 @@ async function load() {
   const app = document.getElementById('app');
   const store = loadStore();
   try {
-    const res = await fetch('status.json?ts=' + Date.now());
+    const res = await fetch('status.json?ts=' + Date.now(), { cache: 'no-store' });
     const data = await res.json();
     window.__DATA = data;
     const openToday = (data.children || []).map(c => {
