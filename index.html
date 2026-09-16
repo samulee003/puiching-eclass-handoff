@@ -1151,7 +1151,7 @@ function openPairModal(childId) {
   const page = (childId === 'li-xin') ? 'gloria.html' : 'abigail.html';
   const url = window.PuichingSync && window.PuichingSync.getChildPairingUrl
     ? window.PuichingSync.getChildPairingUrl(page, normCode)
-    : (window.location.origin + window.location.pathname.replace(/index\.html$/, '') + page + '?sync=' + normCode);
+    : ('https://samulee003.github.io/puiching-eclass-handoff/' + page + '?sync=' + normCode);
 
   const modal = document.getElementById('qrModal');
   const modalTitle = document.getElementById('qrModalTitle');

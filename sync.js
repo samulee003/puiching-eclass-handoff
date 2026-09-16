@@ -29,7 +29,9 @@
     roomId: '',
     roomRef: null,
     auth: null,
-    db: null
+    db: null,
+    disconnectTimer: null,
+    retryTimer: null
   };
 
   function isObject(v) { return v && typeof v === 'object' && !Array.isArray(v); }
@@ -184,14 +186,85 @@
     }).join('');
   }
 
-  function digestCode(code) {
-    if (!window.crypto || !window.crypto.subtle || !window.TextEncoder) {
-      return Promise.reject(new Error('此瀏覽器不支援安全同步碼'));
+  function pureJsSha256(ascii) {
+    function rightRotate(value, amount) { return (value >>> amount) | (value << (32 - amount)); }
+    var mathPow = Math.pow;
+    var maxWord = mathPow(2, 32);
+    var lengthProperty = 'length';
+    var i, j;
+    var result = '';
+    var words = [];
+    var asciiBitLength = ascii[lengthProperty] * 8;
+    var hash = [];
+    var k = [];
+    var primeCounter = 0;
+    var isComposite = {};
+    for (var candidate = 2; primeCounter < 64; candidate++) {
+      if (!isComposite[candidate]) {
+        for (i = 0; i < 313; i += candidate) { isComposite[i] = candidate; }
+        hash[primeCounter] = (mathPow(candidate, 0.5) * maxWord) | 0;
+        k[primeCounter++] = (mathPow(candidate, 1 / 3) * maxWord) | 0;
+      }
     }
-    var bytes = new TextEncoder().encode('puiching-eclass-room-v1:' + code);
-    return window.crypto.subtle.digest('SHA-256', bytes).then(function (d) {
-      return Array.from(new Uint8Array(d), function (b) { return b.toString(16).padStart(2, '0'); }).join('');
-    });
+    hash = hash.slice(0, 8);
+    ascii += '\x80';
+    while (ascii[lengthProperty] % 64 - 56) ascii += '\x00';
+    for (i = 0; i < ascii[lengthProperty]; i++) {
+      j = ascii.charCodeAt(i);
+      if (j >> 8) return '';
+      words[i >> 2] |= j << ((3 - i) % 4) * 8;
+    }
+    words[words[lengthProperty]] = ((asciiBitLength / maxWord) | 0);
+    words[words[lengthProperty]] = (asciiBitLength) | 0;
+    for (j = 0; j < words[lengthProperty];) {
+      var w = words.slice(j, j += 16);
+      var oldHash = hash;
+      hash = hash.slice(0, 8);
+      for (i = 0; i < 64; i++) {
+        var w15 = w[i - 15], w2 = w[i - 2];
+        var a = hash[0], e = hash[4];
+        var temp1 = hash[7]
+          + (rightRotate(e, 6) ^ rightRotate(e, 11) ^ rightRotate(e, 25))
+          + ((e & hash[5]) ^ ((~e) & hash[6]))
+          + k[i]
+          + (w[i] = (i < 16) ? w[i] : (
+              w[i - 16]
+              + (rightRotate(w15, 7) ^ rightRotate(w15, 18) ^ (w15 >>> 3))
+              + w[i - 7]
+              + (rightRotate(w2, 17) ^ rightRotate(w2, 19) ^ (w2 >>> 10))
+            ) | 0
+          );
+        var temp2 = (rightRotate(a, 2) ^ rightRotate(a, 13) ^ rightRotate(a, 22))
+          + ((a & hash[1]) ^ (a & hash[2]) ^ (hash[1] & hash[2]));
+        hash = [(temp1 + temp2) | 0].concat(hash);
+        hash[4] = (hash[4] + temp1) | 0;
+      }
+      for (i = 0; i < 8; i++) { hash[i] = (hash[i] + oldHash[i]) | 0; }
+    }
+    for (i = 0; i < 8; i++) {
+      for (var i2 = 3; i2 >= 0; i2--) {
+        var b = (hash[i] >> (i2 * 8)) & 255;
+        result += ((b < 16) ? '0' : '') + b.toString(16);
+      }
+    }
+    return result;
+  }
+
+  function digestCode(code) {
+    var raw = 'puiching-eclass-room-v1:' + code;
+    if (window.crypto && window.crypto.subtle && typeof window.crypto.subtle.digest === 'function' && window.TextEncoder) {
+      try {
+        var bytes = new TextEncoder().encode(raw);
+        return window.crypto.subtle.digest('SHA-256', bytes).then(function (d) {
+          return Array.from(new Uint8Array(d), function (b) { return b.toString(16).padStart(2, '0'); }).join('');
+        }).catch(function () {
+          return pureJsSha256(raw);
+        });
+      } catch (e) {
+        return Promise.resolve(pureJsSha256(raw));
+      }
+    }
+    return Promise.resolve(pureJsSha256(raw));
   }
 
   function encodePath(value) {
@@ -386,13 +459,23 @@
     var connectedHandler = function (snap) {
       var isOnline = Boolean(snap.val());
       if (isOnline) {
+        if (state.disconnectTimer) {
+          clearTimeout(state.disconnectTimer);
+          state.disconnectTimer = null;
+        }
         if (state.connected) {
           updatePanel('已同步 ☁️', '勾選＋積分會即時同步。換裝置輸入同一組碼即可。', true);
           flushPending();
         }
       } else {
-        if (state.connected) {
-          updatePanel('已離線 ⚠️', '網路暫時中斷；本機變更已保留，重新連線後自動補送。', false);
+        if (state.connected && !state.disconnectTimer) {
+          // Debounce temporary handshakes or network drops for 5s before declaring offline
+          state.disconnectTimer = setTimeout(function () {
+            state.disconnectTimer = null;
+            if (state.connected) {
+              updatePanel('已離線 ⚠️', '網路暫時中斷；本機變更已保留，重新連線後自動補送。', false);
+            }
+          }, 5000);
         }
       }
     };
@@ -406,6 +489,14 @@
   }
 
   function stopConnection(showStatus) {
+    if (state.disconnectTimer) {
+      clearTimeout(state.disconnectTimer);
+      state.disconnectTimer = null;
+    }
+    if (state.retryTimer) {
+      clearTimeout(state.retryTimer);
+      state.retryTimer = null;
+    }
     state.listeners.forEach(function (l) { try { l[0].off(l[1], l[2]); } catch (e) {} });
     state.listeners = [];
     state.roomRef = null;
@@ -451,7 +542,28 @@
       if (!window.firebase.apps.length) window.firebase.initializeApp(config);
       state.auth = window.firebase.auth();
       state.db = window.firebase.database();
-      if (!state.auth.currentUser) return state.auth.signInAnonymously();
+
+      var persistP = Promise.resolve();
+      if (state.auth && typeof state.auth.setPersistence === 'function' && window.firebase && window.firebase.auth && window.firebase.auth.Auth) {
+        var Auth = window.firebase.auth.Auth;
+        persistP = state.auth.setPersistence(Auth.Persistence.LOCAL)
+          .catch(function () {
+            return state.auth.setPersistence(Auth.Persistence.SESSION);
+          })
+          .catch(function () {
+            return state.auth.setPersistence(Auth.Persistence.NONE);
+          })
+          .catch(function () {});
+      }
+
+      return persistP.then(function () {
+        if (!state.auth.currentUser) {
+          return state.auth.signInAnonymously().catch(function (authErr) {
+            console.warn('[PuichingSync] signInAnonymously warning:', authErr);
+            throw authErr;
+          });
+        }
+      });
     });
   }
 
@@ -486,8 +598,20 @@
       updatePanel('已同步 ☁️', '勾選＋積分會即時同步。換裝置輸入同一組碼即可。', true);
       return true;
     }).catch(function (err) {
+      console.warn('[PuichingSync] 連線失敗:', err);
       stopConnection(false);
       updatePanel('已離線 ⚠️', silent ? '上次同步未能連線；本機資料仍安全保留。' : ((err && err.message) || '連線失敗，目前已進入本機模式。'), false);
+
+      // 行動裝置自動背景重試排程（若瀏覽器連線正常）
+      if (typeof navigator !== 'undefined' && navigator.onLine !== false && !state.retryTimer) {
+        state.retryTimer = setTimeout(function () {
+          state.retryTimer = null;
+          var saved = readSavedCode();
+          if (saved === code && !state.connected) {
+            connect(code, true);
+          }
+        }, 10000);
+      }
       return false;
     });
   }
@@ -718,15 +842,25 @@
    * Computes child pairing URL: ${origin}${pathname}abigail.html?sync=${code}
    */
   function getChildPairingUrl(childPage, code) {
-    var origin = window.location.origin || (window.location.protocol + '//' + window.location.host);
-    var pathname = window.location.pathname || '/';
-    if (pathname.endsWith('index.html')) {
-      pathname = pathname.slice(0, -10);
-    }
-    if (!pathname.endsWith('/')) {
-      pathname += '/';
-    }
-    return origin + pathname + childPage + '?sync=' + code;
+    var base = 'https://samulee003.github.io/puiching-eclass-handoff/';
+    try {
+      var protocol = window.location.protocol;
+      var host = window.location.host;
+      var hostname = window.location.hostname;
+      // Only use current host if it is a real public remote host (not local / file)
+      if (protocol === 'https:' && hostname && hostname !== 'localhost' && hostname !== '127.0.0.1' && !hostname.endsWith('.local')) {
+        var origin = window.location.origin || (protocol + '//' + host);
+        var pathname = window.location.pathname || '/';
+        if (pathname.endsWith('index.html')) {
+          pathname = pathname.slice(0, -10);
+        }
+        if (!pathname.endsWith('/')) {
+          pathname += '/';
+        }
+        base = origin + pathname;
+      }
+    } catch (e) {}
+    return base + childPage + '?sync=' + code;
   }
 
   /**
@@ -990,6 +1124,41 @@
       updatePanel('已離線 ⚠️', '網路暫時中斷；本機變更已保留，重新連線後自動補送。', false);
     }
   });
+
+  function handleResume() {
+    if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+      var saved = readSavedCode();
+      if (saved && CODE_PATTERN.test(saved)) {
+        if (state.db && typeof state.db.goOnline === 'function') {
+          try { state.db.goOnline(); } catch (e) {}
+        }
+        if (!state.connected || !state.roomRef) {
+          connect(saved, true);
+        } else {
+          flushPending();
+        }
+      }
+    }
+  }
+
+  if (typeof document !== 'undefined') {
+    document.addEventListener('visibilitychange', handleResume);
+    document.addEventListener('click', function (e) {
+      var target = e.target;
+      if (!target) return;
+      var badge = target.closest('[data-sync-state-badge], [data-sync-state]');
+      if (badge && (badge.classList.contains('offline') || (badge.textContent && badge.textContent.indexOf('已離線') !== -1))) {
+        var saved = readSavedCode();
+        if (saved && CODE_PATTERN.test(saved)) {
+          updatePanel('連接中…', '正在嘗試重新連線… ☁️', false);
+          connect(saved, false);
+        }
+      }
+    });
+  }
+  if (typeof window !== 'undefined') {
+    window.addEventListener('pageshow', handleResume);
+  }
 
   window.PuichingSync = {
     register: register,
