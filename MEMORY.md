@@ -4,54 +4,54 @@
 
 ## 一句話現況
 
-全自動「懶人整合方案」（B+C）已全面完工並通過終局稽核！包含 Firebase 一鍵自動化設定腳本、家長端純前端原生 SVG QR Code 與免打字配對、eClass 家課表過濾抓取引擎、原子雙寫更新器，且 4-Tier 202 項端對端測試 100% 全數通過。
+全自動雙孩 eClass 爬蟲工作流（GitHub Actions 定時同步）全面打通且實測成功！雙孩（李悅 P3、李昕 P1）各自憑證經 GitHub Secrets 登入，透過巢狀表格堆疊解析器成功自真實培正 eClass 抓取實時家課（共 21 項紀錄），依截止日期精準分類，完全不依賴任何 AI / Grok 額度，100% 免費運作！
 
 ## 核心里程碑完成狀況
 
 1. **M1 雲端同步與免打字配對（已全線打通上線）**：
    - 透過 Firebase CLI / Management API 完成真實雲端環境配置：
-     - 專案：`puiching-eclass`
-     - 資料庫：`puiching-eclass-default-rtdb`（位於 `asia-southeast1`）
+     - 專案：`puiching-eclass`（Spark 方案 $0 永久免費）
+     - 資料庫：`puiching-eclass-default-rtdb`（位於 `asia-southeast1` 新加坡）
      - 認證方式：已成功啟用匿名認證（Anonymous Authentication）
      - 安全性規則：已部署 `firebase.rules.json` 至雲端 RTDB
      - Web App：已建立 `puiching-web` 並將正式客戶端 Config 寫入 `sync-config.js`
-     - 雲端實測：經由 Node 腳本對真實 Firebase 執行匿名登入、寫入合規驗證、讀取與清理，**100% 雙向即時同步驗證成功**！
+     - 雲端實測：經由端對端腳本驗證匿名登入、資料庫安全規則、讀取與寫入，雙向即時同步 100% 成功。
    - `index.html` 內建原生 SVG QR Code 向量產出（`assets/qrcode.min.js`，零外部 API 依賴、無資安外洩風險）。
-   - 兩孩平板頁面（`abigail.html` / `gloria.html`）支援讀取 `?familyId=`、`?sync=` 等參數實現零打字一鍵配對，載入後自動清除網址列參數。
-   - 離線優先架構：未連線自動平滑降級為本機模式，斷網操作自動寫入本機佇列，連線恢復時依序重播。
-2. **M2 eClass 自動抓取引擎**：
-   - 實作 `scripts/scrape_eclass.py`，支援環境變數帳密傳遞與離線測試夾具（`tests/fixtures/`）。
-   - 嚴格落實李悅（P3）100% 排除進階科目、李昕（P1）無進階分流。
-   - 口試／Quiz 詳情完整抽取，會話失效、密碼錯誤或逾期時安全拋出 `LOGIN_REQUIRED`。
+   - 兩孩平板頁面（`abigail.html` / `gloria.html`）支援讀取 `?familyId=`、`?sync=` 等參數實現零打字一鍵配對。
+
+2. **M2 eClass 自動抓取引擎與 GitHub Actions 零額度排程（已全面實裝並通過實測）**：
+   - 工作流檔案：`.github/workflows/eclass-sync.yml`。
+   - 執行時程：平日（週一至週五）15:30 澳門時間（07:30 UTC）自動定時執行，並支援 `workflow_dispatch` 手動一鍵觸發。
+   - 雙帳號隔離：使用者已於 GitHub Secrets 設定 4 個金鑰（`ECLASS_LI_YUE_USERNAME`, `ECLASS_LI_YUE_PASSWORD`, `ECLASS_LI_XIN_USERNAME`, `ECLASS_LI_XIN_PASSWORD`）。
+   - 培正 eClass 協定實作：
+     - 先向 `/templates/` 提取 CSRF `securetoken`。
+     - 向 `/login.php` 發送表單登入，安全建立獨立 session。
+     - 向 `/home/eService/homework/management/homeworklist/index.php` 抓取家課清單。
+     - 堆疊式 `SimpleDOMParser` 支援深層巢狀 table 解析，精準識別 eClass 欄位（「限期」為截止日、「開始日期」為派發日、「學科」與「學科組別」）。
+   - 業務過濾規則實測：
+     - 李悅（P3）：100% 排除進階科（進階中文、進階英文、進階數學等）。
+     - 李昕（P1）：無進階科分流，正確保留小一常識、英文等學科。
+     - 日期分類：以「限期」計算剩餘天數，精準放入「今日必做」、「近幾日」、「測驗」或「其他」。
+     - 長期紀錄保護：自動保留長期項目（如全年勤讀獎閱讀卡 20 張進度等），防止日常家課更新意外覆蓋。
+
 3. **M3 雙寫真相與合規閘門**：
    - 實作 `scripts/update_status.py`，原子化雙寫 `status.json` 與 `DASHBOARD.md`。
    - 雙孩狀態嚴格隔離，無損保留既有獎勵點數與零食兌換目錄。
-   - 強制串接 `scripts/validate_status.py` 驗證閘門。
+   - GitHub Actions 抓取後自動執行 `scripts/validate_status.py` 嚴格檢驗，若無變更不產生多餘提交，有變更則自動 commit & push 並驅動 GitHub Pages 更新。
+
 4. **客觀驗收測試（202/202 100% Pass）**：
-   - `tests/run_all_tests.py` 涵蓋 Tier 1 功能測項（141 項）、Tier 2 邊界異常測項（44 項）、Tier 3 跨功能整合測項（5 項）、Tier 4 真實生活場景測項（12 項）。
-   - 所有測項直連生產腳本，達到 **202/202 通過（100% Pass，耗時約 1.2 秒）**。
+   - 本機與 CI 均能運行 `pytest`，涵蓋 Tier 1 功能測項（141 項）、Tier 2 邊界異常測項（44 項）、Tier 3 跨功能整合測項（5 項）、Tier 4 真實生活場景測項（12 項）。
 
 ## Git 分支與提交進度
 
-- 當前分支：`cursor/setup-dev-environment-29da`
-- 關鍵 Commits：
-  - `e84dcae`: Complete lazy integration (Option D): Firebase automation, QR pairing, eClass scraper, dual-writer & 175 E2E tests
-  - `d752916`: Address gate audit: expand login failure indicators, add familyId param, and solidify assertions
-  - `066cd02`: Finalize test suite: 202 E2E tests verified and passing (100% clean audit)
-  - （本提交）: docs: update AGENTS.md and MEMORY.md with lazy automation toolchain and 202 E2E test suite
-
-## 待確認與後續事項
-
-1. 今日兩孩閉環皆「待回」（家長確認完成後可由家長點擊看板複製閉環回報）。
-2. PR 合併時機（可透過 GitHub PR 合併至 `main` 分支以更新 GitHub Pages）。
-3. 勤讀獎進度：李悅全年目標 20 本，每週上限 2 本，依週一提醒追蹤。
+- 當前分支：`main`
+- 最新狀態：已成功與遠端同步，GitHub Actions 最新運行全部成功，實時家課已雙寫至 `status.json` 與 `DASHBOARD.md`。
 
 ## 決策與紅線
 
-- 版面保持乾淨：次要資訊摺疊，不搶待辦
-- 積分採每孩 last-write-wins：正常每孩只有自己的平板會寫分
-- 禁止進 repo：密碼、OTP、session cookie、私鑰；同步碼也不公開
-- 對使用者一律繁體中文，先講下一步
+- 零 AI 額度消耗：純代碼爬蟲 + GitHub Actions 自動化，不消耗任何大模型 Token。
+- 禁止進 repo：密碼、OTP、session cookie、私鑰；任何帳密嚴格只存於 GitHub Secrets。
+- 對使用者一律繁體中文。
 
 ## 接手順序
 
