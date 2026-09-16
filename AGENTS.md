@@ -1,7 +1,9 @@
 # AGENTS.md — 培正 eClass 雙孩功課工作流
 
 > 給任何 AI agent（Codex／Gemini／Claude／Grok／Cursor…）接手或二次開發用。  
-> **禁止**把密碼、OTP、session cookie 寫進本 repo。登入憑證只走各執行環境的安全表單／密碼庫。
+> **禁止**把密碼、OTP、session cookie 寫進本 repo。登入憑證只走各執行環境的安全表單／密碼庫。  
+> **溝通語言：與使用者溝通一律用繁體中文。**  
+> 新接手先讀 `MEMORY.md`（現況快照），再讀本檔（工作流）。
 
 | 資源 | URL |
 |---|---|
@@ -21,12 +23,12 @@
 
 1. 掃 eClass 家課表（含**不須繳交**）
 2. 置頂「今日必做」
-3. 更新 `status.json` + `DASHBOARD.md`（只改自己負責的孩子區塊）
-4. 推到 `main` → GitHub Pages
+3. 更新 `status.json` **和** `DASHBOARD.md`（只改自己負責的孩子區塊）。小孩／家長網頁只讀 `status.json`；只改 Markdown 等於沒更新畫面。
+4. 跑 `python3 scripts/validate_status.py`，通過後經 PR 合併到 `main` → GitHub Pages
 5. 繁中短訊通知家長；家長回「清了」才閉環
 
-家長偏好：**日曆／甘特**看進度（已在 `index.html`）；待辦可勾選（localStorage，不回寫 GitHub）。
-小孩平板使用 `kids.html`：以可愛任務板練習「待開始 → 進行中 → 完成啦」；可選 Firebase 雲端同步，讓筆電與平板共用狀態。
+家長偏好：**日曆／甘特**看進度（已在 `index.html`，預設摺疊）；待辦可勾選（localStorage，不回寫 GitHub）。
+小孩平板用 `abigail.html`（李悅）／`gloria.html`（李昕）：勾選功課、積分換零食。
 
 ---
 
@@ -88,6 +90,25 @@
 
 ## 5. 單次掃描 SOP
 
+### 自動化流程（推薦・最懶人）
+
+```bash
+# 1) 設定帳密環境變數（禁止寫進 repo）
+export ECLASS_USERNAME="your_username"
+export ECLASS_PASSWORD="your_password"
+
+# 2) 一鍵抓取並原子雙寫 status.json 與 DASHBOARD.md
+#    （自動過濾李悅進階科、保留口試詳情、核驗李昕身份、並通過 validate_status 閘門）
+python3 scripts/update_status.py --child li-yue --scrape
+python3 scripts/update_status.py --child li-xin --scrape
+
+# 離線測試（使用測試 fixture 模擬，無需真實連網）：
+python3 scripts/update_status.py --child li-yue --fixture tests/fixtures/eclass_abigail_normal.html
+python3 scripts/update_status.py --child li-xin --fixture tests/fixtures/eclass_gloria_normal.html
+```
+
+### 手動／瀏覽器流程（備援）
+
 ```
 1. 開 https://eclass.puiching.edu.mo/templates/
 2. 登入目標孩（或「某某家長」且已選對學生）
@@ -96,12 +117,14 @@
 5. 收集：科目、標題、截止、須繳交否、內容詳情、附件、發出人
 6. 李悅：刪進階*
 7. 分類：今日必做 / 近幾日 / 本週測驗 / 其他
-8. 只覆寫 DASHBOARD.md 與 status.json 裡「自己的孩子」
-9. git commit + push main（或開 PR 後合併）
-10. 繁中 ADHD 短訊：下一步是什麼；請回「清了」
+8. 只覆寫 DASHBOARD.md 與 status.json 裡「自己的孩子」；同一孩子的兩邊內容必須一致
+9. 跑 `python3 scripts/validate_status.py`，通過後再 commit
+10. 開 PR 合併到 `main`（緊急才直接 push `main`）
+11. 繁中 ADHD 短訊：下一步是什麼；請回「清了」
 ```
 
 詳情頁打不開時：至少保留標題＋截止，並標「詳情未取到」。
+遇到未登入或過期時：明確回報 `LOGIN_REQUIRED`，禁止編造虛假家課。
 
 ---
 
@@ -148,18 +171,28 @@ Session 過期：`LOGIN_REQUIRED` → 對 **該孩所屬** agent 的對話出安
 ### `index.html`
 
 - 讀 `status.json`
-- 分頁：**日曆**（Macau today、李悅藍／李昕粉）＋**時程甘特**（今日→截止）
-- 勾選存 **localStorage**（不回寫 repo）
-- 可在同步面板產生家庭同步碼，連接 Firebase 後跨裝置同步勾選
+- 先顯示兩孩待辦清單；**日曆／時程**摺在下方
+- 勾選預設存本機 `localStorage`（不回寫 repo）；頁尾「☁️ 雲端同步」可選接 Firebase 即時同步勾選＋積分
 - 「清了」按鈕複製給家長貼回主 agent
 
-### `kids.html`
+### `abigail.html` / `gloria.html`
 
-- 給平板上的小孩使用，選擇李悅／李昕後顯示個人任務板
-- 以「待開始／進行中／完成啦」三欄練習專案管理
-- 完成狀態與 `index.html` 在同一瀏覽器／裝置共用 `puiching-eclass-todos-v1`；進行中狀態另存 `puiching-eclass-project-v1`
-- 設定 Firebase 並輸入同一家庭同步碼後，可跨筆電／平板同步兩種狀態
-- 可用 `?child=li-yue` 或 `?child=li-xin` 直接開指定小孩
+- 各孩平板自管頁；與家長頁共用 `puiching-eclass-todos-v1`（勾選）＋ `puiching-eclass-points-v1`（積分）
+- 小孩頁不直接信任 `due_today`／`due_soon` 標籤：`assets/child.js` 會按澳門今天重算顯示桶（逾期／今天 → 今天要做，其餘未來 → 快到期；測驗／其他不動）
+- 勾選賺積分，獎勵商店兌換實體零食（需家長兌現）
+- 李昕頁（`gloria.html`）為較大字、無時程圖
+- 頁尾「☁️ 雲端同步」與家長頁用同一組家庭同步碼，同步勾選＋積分（見 `SYNC_SETUP.md`）
+
+### 同步鍵與不變量
+
+- `puiching-eclass-todos-v1`：勾選；`puiching-eclass-points-v1`：積分
+- `puiching-eclass-sync-code-v1`：家庭同步碼；`puiching-eclass-sync-pending-v1`：離線待送
+- **極簡配對契約**：
+  - URL 參數：支援 `?familyId=<CODE>`（或 `?sync=<CODE>`, `?familyCode=<CODE>`）。
+  - 自動配對：小孩平板透過 QR Code 或點擊連結載入後，`sync.js` 自動寫入 LocalStorage 並觸發 Firebase 連線，隨後呼叫 `window.history.replaceState` 自動消除 URL 參數，避免同步碼外洩。
+  - 狀態徽章：已同步 ☁️（雙向即時）、本機 💾（未配置或純離線模式）、離線 ⚠️（暫存中）、連線中 ⏳（認證中）。
+  - 離線優先：斷網期間的操作會存入待發佇列，網路恢復後自動重播同步。
+- 同步只寫勾選＋積分，**不回寫** `status.json`／`DASHBOARD.md`；功課真相仍由掃描更新
 
 開發時改 UI／契約：開 PR 說明如何驗證 Pages；合併 `main` 後硬重新整理。
 
@@ -169,9 +202,13 @@ Session 過期：`LOGIN_REQUIRED` → 對 **該孩所屬** agent 的對話出安
 
 ```bash
 # 在本 repo 工作樹
-# 1) 更新 status.json + DASHBOARD.md（必要時 index.html）
-# 2) 檢查：無密碼、無 cookie
-git add status.json DASHBOARD.md index.html AGENTS.md
+# 1) 更新 status.json + DASHBOARD.md（必要時 index.html / abigail.html / gloria.html / assets/* / sync*）
+# 2) 跑雙重驗證閘門：
+python3 scripts/validate_status.py   # 驗證 status.json Schema 與日期合規
+python3 tests/run_all_tests.py       # 執行 202 項 Tier 1~4 端對端與場景驗證
+
+# 3) 檢查無密碼、無 cookie、無私鑰後發布：
+git add status.json DASHBOARD.md index.html abigail.html gloria.html assets/child.js assets/child.css AGENTS.md MEMORY.md
 git commit -m "Update eClass digest YYYY-MM-DD"
 git push origin main
 ```
@@ -204,9 +241,9 @@ Pages 來源：`main` 根目錄。人類驗證：https://samulee003.github.io/pu
 
 1. `status.json` schema 版本化＋簡單 JSON Schema
 2. 日曆／甘特：多月、匯出 ICS、逾期排序
-3. 勾選狀態可選同步（需家長同意；預設仍 localStorage）
-4. 自動從家課表 HTML 解析的測試夾具（fixtures，無真實密碼）
-5. GitHub Action：validate `status.json` on PR
+3. ~~勾選＋積分 Firebase 同步~~（已實作：`scripts/setup_firebase.sh` 一鍵自動配置，家長端原生 SVG QR Code 免打字掃碼配對）
+4. ~~自動從家課表 HTML 解析的測試夾具與抓取引擎~~（已實作：`scripts/scrape_eclass.py` 與 `fixtures/`）
+5. ~~自動化端對端測試套件與合規閘門~~（已實作：`tests/run_all_tests.py` 共 202/202 測項 100% 通過）
 6. 勤讀獎進度小工具（週上限 2／目標 20）
 7. 修復／文件化「分 profile Chrome 密碼庫無法寫入」的替代方案（OS keyring／vault 注入），**仍禁止**把密寫進 git
 
@@ -222,10 +259,11 @@ Pages 來源：`main` 根目錄。人類驗證：https://samulee003.github.io/pu
 ## 11. 快速檢查清單（接手 60 秒）
 
 - [ ] 我負責李悅還是李昕？（瀏覽器／帳號不混）
-- [ ] 讀最新 `status.json`／`DASHBOARD.md`
+- [ ] 先讀 `MEMORY.md`，再讀最新 `status.json`／`DASHBOARD.md`
 - [ ] Session 活著？否則 `LOGIN_REQUIRED` 請家長
-- [ ] 掃完只改自己的 JSON／MD 區塊
-- [ ] Push 後打開 Pages 看日曆點是否落在正確日期
+- [ ] 掃完只改自己的 JSON／MD 區塊，且兩邊一致（推薦使用 `scripts/update_status.py`）
+- [ ] 跑 `python3 scripts/validate_status.py` 與 `python3 tests/run_all_tests.py` 通過
+- [ ] PR 合併到 `main` 後硬重新整理 Pages，看日期與勾選是否正確
 - [ ] 通知家長；等「清了」
 
 ---
@@ -235,15 +273,25 @@ Pages 來源：`main` 根目錄。人類驗證：https://samulee003.github.io/pu
 | 檔 | 用途 |
 |---|---|
 | `AGENTS.md` | 本工作流（給 agents） |
+| `MEMORY.md` | 現況快照（先讀這個） |
 | `SOP.md` | 單次掃描短步驟 |
 | `README.md` | 人類＋agents 入口 |
 | `status.json` | 機器真相 |
 | `DASHBOARD.md` | Markdown 真相 |
-| `index.html` | 家長 DASHBOARD（日曆／甘特／勾選 UI） |
-| `kids.html` | 小孩平板用可愛專案管理 UI |
-| `sync-config.js` | Firebase Web config 佔位（禁止放私鑰／密碼） |
-| `sync.js` | 可選 Firebase 雲端同步與家庭同步碼 |
-| `firebase.rules.json` | Realtime Database 安全規則範本 |
+| `index.html` | 家長總覽（待辦、日曆、原生 SVG QR Code 配對） |
+| `abigail.html` | 李悅平板頁（支援 `?familyId=` 一鍵免打字配對） |
+| `gloria.html` | 李昕平板頁（支援 `?familyId=` 一鍵免打字配對） |
+| `assets/child.js` | 小孩頁共用邏輯（勾選＋積分） |
+| `assets/qrcode.min.js` | 純前端原生 SVG QR Code 生成函式庫 |
+| `sync.js` | 勾選＋積分跨裝置即時同步（Firebase RTDB，離線優雅降級） |
+| `sync-config.js` | Firebase Web config（由 setup 腳本自動產生，禁止放私鑰／密碼） |
+| `firebase.json` | Firebase 專案配置 |
+| `firebase.rules.json` | Realtime Database 安全規則 |
+| `scripts/setup_firebase.sh` | 一鍵自動配置 Firebase、啟用 RTDB 與寫入 config 腳本 |
+| `scripts/scrape_eclass.py` | eClass 抓取過濾器（進階科目排除、口試詳情抽取、安全驗證） |
+| `scripts/update_status.py` | 原子雙寫引擎（雙寫 `status.json` 與 `DASHBOARD.md`） |
+| `scripts/validate_status.py` | 合規驗證器（檢查結構、欄位完整性與日期格式） |
+| `tests/run_all_tests.py` | 4-Tier 202 項端對端綜合測試總套件 |
 | `SYNC_SETUP.md` | 跨裝置同步設定 |
 
-**最後更新說明：** 2026-09-14 — 雙軌甲案、密碼甲＋乙、Pages 日曆＋甘特、17:30 暫停、勤讀獎 eClass=20。
+**最後更新說明：** 2026-09-16 — 全面打通 B+C 雙軌全自動懶人方案：完成 Firebase 一鍵自動設定與 SVG QR Code 免打字配對、eClass 家課表過濾抓取引擎、原子雙寫更新器，並經 202 項 E2E 測試 100% 驗證通過；`status.json`＋`DASHBOARD.md` 雙寫真相合規。

@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "updated_at": "2026-09-15T09:52:17Z",
+  "updated_at": "2026-09-15T14:26:26Z",
   "timezone": "Asia/Macau",
   "repo": "https://github.com/samulee003/puiching-eclass-handoff",
   "rules": {
@@ -33,19 +33,27 @@
         },
         {
           "subject": "英文",
+          "title": "(Miss Valentina) Do Wb. p.16",
+          "due": "2026-09-15",
+          "submit_required": true
+        },
+        {
+          "subject": "英文",
           "title": "(Ms. Au Ieong) Do Wb. p.14",
           "due": "2026-09-15",
           "submit_required": false,
           "note": "不用交，今日做"
-        },
-        {
-          "subject": "英文",
-          "title": "(Miss Valentina) Do Wb. p.16",
-          "due": "2026-09-15",
-          "submit_required": true
         }
       ],
       "due_soon": [
+        {
+          "subject": "中文",
+          "title": "完成進階主題補充練習（一般班選做）",
+          "due": "2026-09-16",
+          "submit_required": false,
+          "note": "供有餘力同學自我挑戰",
+          "detail": "第5課詞彙補充進階工作紙"
+        },
         {
           "subject": "數學",
           "title": "呂：周四交習作6",
@@ -61,9 +69,10 @@
         },
         {
           "subject": "英文",
-          "title": "Correct Spelling Challenge / S.C. on Monday (List 2)",
+          "title": "(Miss Valentina) Correct Spelling Challenge / S.C. on Monday (List 2)",
           "due": "2026-09-20",
-          "submit_required": true
+          "submit_required": true,
+          "note": "拼字挑戰 List 2"
         },
         {
           "subject": "中文",
@@ -78,6 +87,7 @@
           "title": "Quiz 1 on 17/9 (Thur)",
           "due": "2026-09-17",
           "submit_required": true,
+          "note": "請帶HB鉛筆及橡皮擦",
           "detail": "Present Simple／Present Continuous／Past Tense（Worksheet 1–3）＋Reading Comprehension"
         }
       ],
@@ -87,6 +97,7 @@
           "title": "第七周隨堂進行第一段口試（愛國愛澳）",
           "due": "2026-10-16",
           "submit_required": true,
+          "note": "演講比賽預選",
           "detail": "3分鐘內；粵語／普通話；繪本／改編／自創"
         },
         {
@@ -94,6 +105,7 @@
           "title": "勤讀獎／閱讀卡（全年20張／週上限2）",
           "due": "2027-05-07",
           "submit_required": true,
+          "note": "全年完成20張；每週最多交2張；閱讀卡可向課室領取或eClass下載",
           "progress": "0/20"
         }
       ],
@@ -107,51 +119,66 @@
       "zh": "李昕",
       "grade": "P1",
       "owner": "grok-zhangfei",
-      "due_today": [
-        {
-          "subject": "中文",
-          "title": "生字 P.6–7",
-          "due": "2026-09-14",
-          "submit_required": true,
-          "note": "置頂"
-        }
-      ],
+      "due_today": [],
       "due_soon": [
         {
           "subject": "英文",
-          "title": "Quiz Listening：數字1–20＋顏色認讀",
+          "title": "Quiz Listening：數字1–20＋顏色認讀（不用串字）",
           "due": "2026-09-16",
-          "submit_required": false
-        },
+          "submit_required": false,
+          "note": "置頂・明天",
+          "detail": "數字1–20＋顏色認讀（不用串字）"
+        }
+      ],
+      "other": [
         {
           "subject": "中文",
           "title": "默字一：温第1冊生字冊P.2–7",
           "due": "2026-09-23",
-          "submit_required": false
+          "submit_required": false,
+          "note": "生字認讀及筆順練習",
+          "detail": "詳情未取到"
+        },
+        {
+          "subject": "常識",
+          "title": "閱讀工作紙一",
+          "due": "2026-09-23",
+          "submit_required": true
+        },
+        {
+          "subject": "進階常識",
+          "title": "生活觀察探索小記",
+          "due": "2026-09-24",
+          "submit_required": false,
+          "note": "探索大自然",
+          "detail": "觀察校園植物特徵記錄"
         },
         {
           "subject": "常識",
           "title": "9/21–25 認讀評估第1課我的身體",
           "due": "2026-09-25",
-          "submit_required": false
-        }
-      ],
-      "other": [
+          "submit_required": false,
+          "note": "口頭認讀評估",
+          "detail": "第1課我的身體"
+        },
         {
           "subject": "常識",
           "title": "生詞簿",
           "due": "2027-06-11",
-          "submit_required": false
+          "submit_required": false,
+          "note": "平時積累"
         },
         {
           "subject": "導師",
           "title": "內線 PDF",
           "due": "2027-07-02",
-          "submit_required": false
+          "submit_required": false,
+          "note": "班務通知"
         }
       ],
       "cleared": false,
-      "chrome_password_saved": false
+      "chrome_password_saved": false,
+      "tests_this_week": []
     }
   ],
   "scan_schedule_macau": {
@@ -172,5 +199,36 @@
     "checkable": true,
     "storage": "localStorage",
     "close_loop": "paste 李悅清了 / 李昕清了 / 兩個清了 to Grok"
+  },
+  "rewards": {
+    "points_per_task": 10,
+    "all_done_bonus": 20,
+    "note": "積分存孩子平板 localStorage；兌換需家長把實體零食交付才算完成",
+    "catalog": [
+      {
+        "id": "gummy",
+        "name": "小熊軟糖",
+        "emoji": "🐻",
+        "cost": 50
+      },
+      {
+        "id": "choco",
+        "name": "巧克力",
+        "emoji": "🍫",
+        "cost": 80
+      },
+      {
+        "id": "chips",
+        "name": "洋芋片",
+        "emoji": "🥔",
+        "cost": 120
+      },
+      {
+        "id": "icecream",
+        "name": "雪糕",
+        "emoji": "🍦",
+        "cost": 150
+      }
+    ]
   }
 }
