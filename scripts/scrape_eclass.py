@@ -32,8 +32,8 @@ import urllib.request
 from typing import Any, Dict, List, Optional, Tuple
 
 ECLASS_BASE_URL = "https://eclass.puiching.edu.mo/templates/"
-ECLASS_LOGIN_URL = "https://eclass.puiching.edu.mo/templates/login.php"
-ECLASS_HOMEWORK_URL = "https://eclass.puiching.edu.mo/templates/homework/index.php"
+ECLASS_LOGIN_URL = "https://eclass.puiching.edu.mo/login.php"
+ECLASS_HOMEWORK_URL = "https://eclass.puiching.edu.mo/home/eService/homework/index.php"
 
 STUDENT_MAPPING = {
     "li-yue": {"zh": "李悅", "en": "Abigail", "grade": "P3"},
@@ -644,18 +644,57 @@ class EClassScraper:
                 "Set ECLASS_USERNAME/ECLASS_PASSWORD or child-specific environment variables."
             )
 
-        payload = urllib.parse.urlencode(
-            {"username": self.username, "password": self.password}
-        ).encode("utf-8")
+        # 1. Fetch initial portal page to acquire cookies and extract CSRF token (securetoken)
+        secure_token = ""
+        try:
+            req_init = urllib.request.Request(ECLASS_BASE_URL, headers={"User-Agent": self.opener.addheaders[0][1]})
+            with self.opener.open(req_init, timeout=15) as resp:
+                init_html = resp.read().decode("utf-8", errors="replace")
+                m = re.search(r'name=["\']securetoken["\']\s+value=["\']([^"\']+)["\']', init_html, re.I)
+                if not m:
+                    m = re.search(r'value=["\']([^"\']+)["\']\s+name=["\']securetoken["\']', init_html, re.I)
+                if m:
+                    secure_token = m.group(1)
+        except Exception:
+            pass
 
-        req = urllib.request.Request(ECLASS_LOGIN_URL, data=payload, method="POST")
+        # 2. Build payload adhering to eClass form requirements
+        payload_dict = {
+            "UserLogin": self.username,
+            "UserPassword": self.password,
+            "home_page": "1",
+            "url": "/templates/index.php?err=1&DirectLink=",
+            "submit": "登入",
+            "username": self.username,
+            "password": self.password,
+        }
+        if secure_token:
+            payload_dict["securetoken"] = secure_token
+
+        payload = urllib.parse.urlencode(payload_dict).encode("utf-8")
+
+        req = urllib.request.Request(
+            ECLASS_LOGIN_URL,
+            data=payload,
+            method="POST",
+            headers={
+                "Referer": ECLASS_BASE_URL,
+                "Origin": "https://eclass.puiching.edu.mo",
+            }
+        )
         try:
             with self.opener.open(req, timeout=15) as resp:
                 resp_text = resp.read().decode("utf-8", errors="replace")
+                final_url = resp.geturl()
         except (urllib.error.URLError, TimeoutError, OSError) as exc:
             raise LoginRequiredError(f"LOGIN_REQUIRED: eClass connection failed ({exc})") from exc
 
-        # Check for authentication failure
+        # Check for authentication failure or error redirect
+        if "err=1" in final_url or "err=" in final_url:
+            raise LoginRequiredError(
+                f"LOGIN_REQUIRED: Authentication failed on portal for {self.child_id} (err=1)"
+            )
+
         for indicator in LOGIN_FAILURE_INDICATORS:
             if indicator in resp_text.lower():
                 raise LoginRequiredError(
@@ -664,14 +703,30 @@ class EClassScraper:
 
     def fetch_homework_page(self) -> str:
         """Fetch the homework list page."""
-        req = urllib.request.Request(ECLASS_HOMEWORK_URL, method="GET")
-        try:
-            with self.opener.open(req, timeout=15) as resp:
-                return resp.read().decode("utf-8", errors="replace")
-        except (urllib.error.URLError, TimeoutError, OSError) as exc:
-            raise LoginRequiredError(
-                f"LOGIN_REQUIRED: Failed to fetch homework page ({exc})"
-            ) from exc
+        candidate_urls = [
+            ECLASS_HOMEWORK_URL,
+            "https://eclass.puiching.edu.mo/home/eService/homework/",
+            "https://eclass.puiching.edu.mo/templates/homework/index.php",
+        ]
+        last_exc = None
+        for url in candidate_urls:
+            req = urllib.request.Request(url, method="GET")
+            try:
+                with self.opener.open(req, timeout=15) as resp:
+                    final_url = resp.geturl()
+                    # If redirected to login page or root without session
+                    if "login" in final_url.lower() or final_url.rstrip("/").endswith("puiching.edu.mo"):
+                        raise LoginRequiredError("LOGIN_REQUIRED: Session expired or redirected to login")
+                    return resp.read().decode("utf-8", errors="replace")
+            except LoginRequiredError:
+                raise
+            except (urllib.error.URLError, TimeoutError, OSError) as exc:
+                last_exc = exc
+                continue
+
+        raise LoginRequiredError(
+            f"LOGIN_REQUIRED: Failed to fetch homework page ({last_exc})"
+        )
 
     def scrape(self, today: Optional[datetime.date] = None) -> Dict[str, Any]:
         """Perform full scrape workflow: login -> fetch -> parse -> filter -> categorize."""
