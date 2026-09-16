@@ -661,7 +661,90 @@
       });
   }
 
+  function showChildSyncModal() {
+    var existing = document.getElementById('childSyncModal');
+    if (existing) { existing.style.display = 'flex'; return; }
+    var modal = document.createElement('div');
+    modal.id = 'childSyncModal';
+    modal.style.cssText = 'position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,0.65); backdrop-filter:blur(6px); display:flex; align-items:center; justify-content:center; padding:16px;';
+    modal.innerHTML =
+      '<div style="background:#fff; border-radius:18px; max-width:380px; width:100%; padding:22px; box-shadow:0 20px 40px rgba(0,0,0,0.25); text-align:center; color:#1e293b; position:relative;">' +
+      '  <button type="button" id="closeChildSyncModal" style="position:absolute; right:14px; top:14px; background:#f1f5f9; border:none; color:#64748b; border-radius:50%; width:30px; height:30px; font-size:16px; cursor:pointer; font-weight:700;">✕</button>' +
+      '  <div style="font-size:1.2rem; font-weight:800; margin-bottom:6px;">☁️ 平板同步設定</div>' +
+      '  <div id="childModalStateText" style="font-size:0.85rem; color:#64748b; margin-bottom:14px;">輸入家長端提供的 20 位家庭同步碼，即可打通即時同步。</div>' +
+      '  <div style="margin-bottom:14px;">' +
+      '    <input type="text" id="childModalInput" maxlength="24" placeholder="XXXX-XXXX-XXXX-XXXX-XXXX" style="width:100%; box-sizing:border-box; padding:12px; font-size:1rem; font-family:monospace; font-weight:700; text-align:center; text-transform:uppercase; border:2px solid #cbd5e1; border-radius:10px; outline:none;" />' +
+      '  </div>' +
+      '  <div style="display:flex; gap:8px;">' +
+      '    <button type="button" id="childModalConnectBtn" style="flex:1; padding:12px; font-weight:800; font-size:0.95rem; background:#16a34a; color:#fff; border:none; border-radius:10px; cursor:pointer;">🚀 立即連接</button>' +
+      '    <button type="button" id="childModalRetryBtn" style="padding:12px 16px; font-weight:700; font-size:0.9rem; background:#f1f5f9; color:#475569; border:1px solid #cbd5e1; border-radius:10px; cursor:pointer;">🔄 重試</button>' +
+      '  </div>' +
+      '</div>';
+    document.body.appendChild(modal);
+
+    var input = modal.querySelector('#childModalInput');
+    var saved = (localStorage.getItem('puiching-eclass-sync-code-v1') || '').trim();
+    if (saved) input.value = (saved.match(/.{1,4}/g) || []).join('-') || saved;
+
+    modal.querySelector('#closeChildSyncModal').onclick = function () { modal.style.display = 'none'; };
+    modal.onclick = function (e) { if (e.target === modal) modal.style.display = 'none'; };
+
+    modal.querySelector('#childModalConnectBtn').onclick = function () {
+      var val = (input.value || '').toUpperCase().replace(/[\s-]/g, '');
+      if (val.length !== 20) {
+        var toastEl = document.getElementById('toast');
+        if (toastEl) {
+          toastEl.textContent = '⚠️ 請輸入完整的 20 位家庭同步碼！';
+          toastEl.classList.add('show');
+          setTimeout(function () { toastEl.classList.remove('show'); }, 3000);
+        }
+        return;
+      }
+      if (window.PuichingSync && window.PuichingSync.connect) {
+        modal.querySelector('#childModalStateText').textContent = '正在連線中… ☁️';
+        window.PuichingSync.connect(val, false).then(function (ok) {
+          if (ok) {
+            modal.style.display = 'none';
+            var toastEl = document.getElementById('toast');
+            if (toastEl) {
+              toastEl.textContent = '🎉 成功連接家庭同步空間！';
+              toastEl.classList.add('show');
+              setTimeout(function () { toastEl.classList.remove('show'); }, 3000);
+            }
+          } else {
+            modal.querySelector('#childModalStateText').textContent = '⚠️ 連線失敗，請檢查代碼或網路。';
+          }
+        });
+      }
+    };
+
+    modal.querySelector('#childModalRetryBtn').onclick = function () {
+      var val = (localStorage.getItem('puiching-eclass-sync-code-v1') || input.value || '').toUpperCase().replace(/[\s-]/g, '');
+      if (val && window.PuichingSync && window.PuichingSync.connect) {
+        window.PuichingSync.connect(val, false);
+      }
+    };
+  }
+
   document.addEventListener('DOMContentLoaded', function () {
+    var badge = document.getElementById('childSyncBadge');
+    if (badge) {
+      badge.onclick = function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        var isConnected = badge.classList.contains('connected') || badge.textContent.indexOf('已同步') !== -1;
+        if (isConnected) {
+          var toastEl = document.getElementById('toast');
+          if (toastEl) {
+            toastEl.textContent = '✅ 雲端同步正常！打勾會即時傳給家長。';
+            toastEl.classList.add('show');
+            setTimeout(function () { toastEl.classList.remove('show'); }, 2500);
+          }
+        } else {
+          showChildSyncModal();
+        }
+      };
+    }
     registerSync();
     load();
   });

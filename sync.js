@@ -287,6 +287,62 @@
     return defaultValue(kind);
   }
 
+  function safeFirebaseKey(k) {
+    return encodeURIComponent(String(k || '')).replace(/\./g, '%2E');
+  }
+
+  function unsafeFirebaseKey(k) {
+    try {
+      return decodeURIComponent(String(k || ''));
+    } catch (e) {
+      return String(k || '');
+    }
+  }
+
+  function serializePointsForFirebase(v) {
+    var clean = sanitizePointsChild(v);
+    var out = {
+      earned: clean.earned,
+      spent: clean.spent,
+      awarded: {},
+      bonusDates: {},
+      redemptions: clean.redemptions
+    };
+    Object.keys(clean.awarded || {}).forEach(function (k) {
+      if (clean.awarded[k] === true) {
+        out.awarded[safeFirebaseKey(k)] = true;
+      }
+    });
+    Object.keys(clean.bonusDates || {}).forEach(function (k) {
+      if (clean.bonusDates[k] === true) {
+        out.bonusDates[safeFirebaseKey(k)] = true;
+      }
+    });
+    return out;
+  }
+
+  function deserializePointsFromFirebase(v) {
+    var clean = sanitizePointsChild(v);
+    var out = {
+      earned: clean.earned,
+      spent: clean.spent,
+      awarded: {},
+      bonusDates: {},
+      redemptions: clean.redemptions
+    };
+    Object.keys(clean.awarded || {}).forEach(function (k) {
+      if (clean.awarded[k] === true) {
+        out.awarded[unsafeFirebaseKey(k)] = true;
+      }
+    });
+    Object.keys(clean.bonusDates || {}).forEach(function (k) {
+      if (clean.bonusDates[k] === true) {
+        out.bonusDates[unsafeFirebaseKey(k)] = true;
+      }
+    });
+    return out;
+  }
+
   function parseTodoRecords(value) {
     var out = {};
     if (!isObject(value)) return out;
@@ -302,7 +358,7 @@
     Object.values(value).forEach(function (r) {
       if (!isObject(r) || typeof r.key !== 'string') return;
       if (!/^[a-z0-9-]+$/.test(r.key)) return;
-      if (isObject(r.data)) out[r.key] = sanitizePointsChild(r.data);
+      if (isObject(r.data)) out[r.key] = deserializePointsFromFirebase(r.data);
     });
     return out;
   }
@@ -330,7 +386,7 @@
       deviceId: state.auth.currentUser.uid
     };
     if (kind === 'todos') record.done = Boolean(value);
-    else record.data = sanitizePointsChild(value);
+    else record.data = serializePointsForFirebase(value);
     var path = kind === 'todos' ? 'todos' : 'points';
     return state.roomRef.child(path).child(encodePath(key)).set(record);
   }
@@ -585,7 +641,19 @@
     }).then(function (roomId) {
       state.roomId = roomId;
       state.roomRef = state.db.ref('rooms/' + state.roomId);
-      return state.roomRef.once('value');
+      return new Promise(function (res) {
+        var t = setTimeout(function () {
+          res({ val: function () { return {}; } });
+        }, 6000);
+        state.roomRef.once('value').then(function (s) {
+          clearTimeout(t);
+          res(s);
+        }).catch(function (e) {
+          clearTimeout(t);
+          console.warn('[PuichingSync] once(value) warning:', e);
+          res({ val: function () { return {}; } });
+        });
+      });
     }).then(function (snap) {
       var root = snap.val() || {};
       reconcileInitial(parseTodoRecords(root.todos), parsePointRecords(root.points));
@@ -1160,6 +1228,19 @@
     window.addEventListener('pageshow', handleResume);
   }
 
+  function getOrCreateCode() {
+    var saved = readSavedCode();
+    if (CODE_PATTERN.test(saved)) {
+      return saved;
+    }
+    var code = generateCode();
+    saveCode(code);
+    var input = panelInput();
+    if (input) input.value = formatCode(code);
+    connect(code, false);
+    return code;
+  }
+
   window.PuichingSync = {
     register: register,
     replaceTodos: function (v) { publishChanges('todos', v); },
@@ -1171,6 +1252,7 @@
     getChildPairingUrl: getChildPairingUrl,
     extractSyncCodeFromUrl: extractSyncCodeFromUrl,
     updatePairingCards: updatePairingCards,
-    flushPending: flushPending
+    flushPending: flushPending,
+    getOrCreateCode: getOrCreateCode
   };
 })();

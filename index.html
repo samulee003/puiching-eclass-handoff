@@ -548,21 +548,30 @@
   <div class="toast" id="toast"></div>
 
   <div id="qrModal" class="qr-modal" style="display:none; position:fixed; inset:0; z-index:999; background:rgba(0,0,0,0.75); backdrop-filter:blur(6px); align-items:center; justify-content:center; padding:16px;">
-    <div class="qr-modal-content" style="background:#1e293b; border:1px solid #334155; border-radius:16px; max-width:380px; width:100%; padding:20px; box-shadow:0 20px 40px rgba(0,0,0,0.5); text-align:center; color:#f8fafc; position:relative;">
+    <div class="qr-modal-content" style="background:#1e293b; border:1px solid #334155; border-radius:16px; max-width:400px; width:100%; padding:20px; box-shadow:0 20px 40px rgba(0,0,0,0.5); text-align:center; color:#f8fafc; position:relative;">
       <button type="button" id="qrModalClose" style="position:absolute; right:14px; top:14px; background:rgba(255,255,255,0.1); border:none; color:#cbd5e1; border-radius:50%; width:28px; height:28px; font-size:16px; cursor:pointer; line-height:1;">✕</button>
       <div id="qrModalTitle" style="font-size:1.1rem; font-weight:800; margin-bottom:4px;">🐶 李悅平板配對</div>
-      <div style="font-size:0.8rem; color:#94a3b8; margin-bottom:14px;">用平板相機直接掃描下方 QR Code</div>
-      <div id="qrModalBox" style="background:#ffffff; border-radius:12px; padding:12px; display:inline-block; margin-bottom:14px; box-shadow:0 4px 12px rgba(0,0,0,0.15); min-width:180px; min-height:180px;"></div>
-      <div id="qrModalUrl" style="font-size:0.75rem; color:#94a3b8; word-break:break-all; background:rgba(0,0,0,0.3); padding:8px 10px; border-radius:8px; margin-bottom:14px; border:1px solid #334155;"></div>
+      <div style="font-size:0.8rem; color:#94a3b8; margin-bottom:12px;">用平板相機掃描下方 QR Code 即可一鍵配對</div>
+      <div id="qrModalBox" style="background:#ffffff; border-radius:12px; padding:12px; display:inline-block; margin-bottom:12px; box-shadow:0 4px 12px rgba(0,0,0,0.15); min-width:180px; min-height:180px;"></div>
+      
+      <div style="background:rgba(15,23,42,0.6); border:1px solid #334155; border-radius:10px; padding:10px; margin-bottom:14px; text-align:left;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+          <span style="font-size:0.75rem; color:#93c5fd; font-weight:700;">🔑 家庭同步碼（平板手動輸入用）</span>
+          <button type="button" id="qrModalCopyCode" style="background:rgba(59,130,246,0.2); border:1px solid #3b82f6; color:#93c5fd; font-size:0.7rem; padding:2px 8px; border-radius:6px; cursor:pointer;">複製代碼</button>
+        </div>
+        <div id="qrModalCode" style="font-family:monospace; font-size:1rem; font-weight:800; letter-spacing:1px; color:#38bdf8; text-align:center; padding:4px 0;"></div>
+      </div>
+
+      <div id="qrModalUrl" style="font-size:0.72rem; color:#94a3b8; word-break:break-all; background:rgba(0,0,0,0.3); padding:8px 10px; border-radius:8px; margin-bottom:14px; border:1px solid #334155; text-align:left;"></div>
       <div style="display:flex; gap:8px;">
         <button type="button" id="qrModalCopy" class="primary" style="flex:1; padding:10px; font-weight:700; cursor:pointer; border-radius:10px;">📋 複製配對網址</button>
         <button type="button" id="qrModalOpen" style="flex:1; padding:10px; font-weight:700; cursor:pointer; border-radius:10px; background:rgba(255,255,255,0.08); border:1px solid #475569; color:#f8fafc;">在新分頁開啟 ↗</button>
       </div>
     </div>
   </div>
-<script src="sync-config.js"></script>
-<script src="assets/qrcode.min.js"></script>
-<script src="sync.js"></script>
+<script src="sync-config.js?v=20260916-02"></script>
+<script src="assets/qrcode.min.js?v=20260916-02"></script>
+<script src="sync.js?v=20260916-02"></script>
 <script>
 const STORE_KEY = 'puiching-eclass-todos-v1';
 const POINTS_KEY = 'puiching-eclass-points-v1';
@@ -1141,13 +1150,13 @@ try {
 } catch {}
 
 function openPairModal(childId) {
-  let code = (localStorage.getItem('puiching-eclass-sync-code-v1') || '').trim();
-  if (!code || !/^[A-Z2-9-]{20,24}$/i.test(code)) {
-    const genBtn = document.querySelector('[data-sync-action="generate"]');
-    if (genBtn) genBtn.click();
-    code = (localStorage.getItem('puiching-eclass-sync-code-v1') || document.getElementById('sync-code')?.value || '').trim();
+  let normCode = '';
+  if (window.PuichingSync && typeof window.PuichingSync.getOrCreateCode === 'function') {
+    normCode = window.PuichingSync.getOrCreateCode();
+  } else {
+    const raw = (localStorage.getItem('puiching-eclass-sync-code-v1') || document.getElementById('sync-code')?.value || '').trim();
+    normCode = raw.toUpperCase().replace(/[\s-]/g, '');
   }
-  const normCode = code.toUpperCase().replace(/[\s-]/g, '');
   const page = (childId === 'li-xin') ? 'gloria.html' : 'abigail.html';
   const url = window.PuichingSync && window.PuichingSync.getChildPairingUrl
     ? window.PuichingSync.getChildPairingUrl(page, normCode)
@@ -1157,7 +1166,9 @@ function openPairModal(childId) {
   const modalTitle = document.getElementById('qrModalTitle');
   const modalBox = document.getElementById('qrModalBox');
   const modalUrl = document.getElementById('qrModalUrl');
+  const modalCode = document.getElementById('qrModalCode');
   const modalCopy = document.getElementById('qrModalCopy');
+  const modalCopyCode = document.getElementById('qrModalCopyCode');
   const modalOpen = document.getElementById('qrModalOpen');
 
   if (modal && modalTitle && modalBox && modalUrl) {
@@ -1167,12 +1178,22 @@ function openPairModal(childId) {
       : '';
     modalBox.innerHTML = svg;
     modalUrl.textContent = url;
+    if (modalCode) {
+      const formatted = (normCode.match(/.{1,4}/g) || []).join('-') || normCode;
+      modalCode.textContent = formatted;
+    }
     modal.style.display = 'flex';
 
     if (modalCopy) {
       modalCopy.onclick = async () => {
         await copyText(url);
         toast('已複製配對網址！');
+      };
+    }
+    if (modalCopyCode) {
+      modalCopyCode.onclick = async () => {
+        await copyText(normCode);
+        toast('已複製家庭同步碼！');
       };
     }
     if (modalOpen) {
