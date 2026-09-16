@@ -312,7 +312,7 @@ def parse_homework_table_rows(tables: List[List[Dict[str, Any]]]) -> List[Dict[s
             # Check if this row is a header row
             has_subject = any("科目" in t or "學科" in t or t.lower() == "subject" for t in cell_texts)
             has_other_col = any(
-                any(k in t for k in ("截止", "期限", "繳交", "內容", "標題", "課題", "家課", "功課", "要求", "due", "title"))
+                any(k in t for k in ("截止", "期限", "限期", "繳交", "內容", "標題", "課題", "家課", "功課", "要求", "due", "title"))
                 for t in cell_texts
             )
 
@@ -324,11 +324,14 @@ def parse_homework_table_rows(tables: List[List[Dict[str, Any]]]) -> List[Dict[s
                 for col_idx, cell in enumerate(row_cells):
                     txt = cell["text"].strip()
                     txt_lower = txt.lower()
-                    if "科目" in txt or "學科" in txt or txt_lower == "subject":
-                        header_indices["subject"] = col_idx
+                    if "組別" in txt or "班別" in txt:
+                        header_indices["subject_group"] = col_idx
+                    elif "科目" in txt or txt == "學科" or "學科" in txt or txt_lower == "subject":
+                        if "subject" not in header_indices or "組別" not in txt:
+                            header_indices["subject"] = col_idx
                     elif any(k in txt for k in ("派發", "發布", "發佈", "給予", "開始")):
                         header_indices["issue_date"] = col_idx
-                    elif any(k in txt for k in ("截止", "期限", "交課日期", "繳交日期", "due")):
+                    elif any(k in txt for k in ("限期", "截止", "期限", "交課日期", "繳交日期", "due")):
                         header_indices["due"] = col_idx
                     elif any(k in txt for k in ("繳交", "狀態", "要求", "submit", "方式")):
                         header_indices["submit"] = col_idx
@@ -395,7 +398,7 @@ def parse_homework_table_rows(tables: List[List[Dict[str, Any]]]) -> List[Dict[s
                 return ""
 
             if "subject" not in item_data or not item_data["subject"]:
-                item_data["subject"] = get_col("subject")
+                item_data["subject"] = get_col("subject") or get_col("subject_group")
             if "title" not in item_data or not item_data["title"]:
                 item_data["title"] = get_col("title")
             if "due" not in item_data or not item_data["due"]:
@@ -428,6 +431,8 @@ def parse_homework_table_rows(tables: List[List[Dict[str, Any]]]) -> List[Dict[s
                             pass
 
             subject = item_data.get("subject", "").strip()
+            # Strip grade/class prefixes like 'P3B 中文' -> '中文', 'P1E 英文' -> '英文'
+            subject = re.sub(r"^P\d[A-Z]?\s*", "", subject).strip()
             title = item_data.get("title", "").strip()
             due_raw = item_data.get("due", "").strip()
 
@@ -440,7 +445,12 @@ def parse_homework_table_rows(tables: List[List[Dict[str, Any]]]) -> List[Dict[s
                 continue
 
             submit_str = item_data.get("submit_raw", "").strip()
-            if any(k in submit_str for k in ("不須", "不用", "免交", "不需要", "no")):
+            note_str = item_data.get("note", "") or ""
+            combined_desc = f"{title} {note_str} {submit_str}"
+
+            if any(k in combined_desc for k in ("不須", "不用", "免交", "不需要", "不用默寫", "不用交", "不需繳交", "免繳交")):
+                submit_required = False
+            elif any(k in submit_str for k in ("不須", "不用", "免交", "不需要", "no")):
                 submit_required = False
             elif any(k in submit_str for k in ("須繳交", "要交", "需要", "yes", "必須")):
                 submit_required = True
