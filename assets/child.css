@@ -22,6 +22,16 @@
   --star-gold: #f59e0b;
 }
 
+body[data-accent="yue"] {
+  --accent: #16a34a;
+  --accent-soft: #dcfce7;
+  --accent-grad: linear-gradient(135deg, #15803d 0%, #16a34a 50%, #34d399 100%);
+  --bg: #f0fdf4;
+}
+body[data-accent="yue"] .hero {
+  box-shadow: 0 14px 34px -4px rgba(22, 163, 74, 0.28);
+}
+
 body[data-accent="xin"] {
   --accent: #db2777;
   --accent-soft: #fdf2f8;
@@ -84,6 +94,10 @@ body[data-accent="xin"] .hero {
   font-size: 38px; flex-shrink: 0;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   animation: avatar-float 3.5s ease-in-out infinite alternate;
+  overflow: hidden;
+}
+.avatar img {
+  width: 100%; height: 100%; object-fit: cover; border-radius: 50%; display: block;
 }
 @keyframes avatar-float {
   0% { transform: translateY(0) rotate(0deg); }

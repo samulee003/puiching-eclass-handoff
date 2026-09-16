@@ -634,8 +634,12 @@
         document.getElementById('child-name').textContent = child.zh;
         document.getElementById('child-who').textContent =
           child.en + ' · ' + child.grade;
-        document.getElementById('avatar').textContent =
-          CHILD_ID === 'li-xin' ? '🐰' : '🦊';
+        var avatarEl = document.getElementById('avatar');
+        if (CHILD_ID === 'li-yue') {
+          avatarEl.innerHTML = '<img src="assets/abigail_avatar.jpg" alt="🐶 李悅的狗狗頭像" onerror="this.outerHTML=\'🐶\'">';
+        } else {
+          avatarEl.textContent = '🐰';
+        }
         document.getElementById('updated').textContent = (function () {
           if (!data.updated_at) return '';
           try {

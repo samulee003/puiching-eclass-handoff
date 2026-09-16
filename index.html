@@ -995,7 +995,7 @@ async function load() {
       const { total, done } = childProgress(child, store);
       const pct = total ? Math.round(done * 100 / total) : 0;
       const pageCls = child.id === 'li-xin' ? 'xin' : 'yue';
-      const avatar = child.id === 'li-xin' ? '🐰' : '🦊';
+      const avatar = child.id === 'li-xin' ? '🐰' : '<img src="assets/abigail_avatar.jpg" alt="🐶" style="width:24px;height:24px;border-radius:50%;vertical-align:middle;display:inline-block;margin-right:4px;object-fit:cover;" onerror="this.outerHTML=\'🐶\'">';
       card.innerHTML = `
         <div class="card-head">
           <h2>${avatar} ${child.zh} <span class="grade-badge" style="font-size:0.75rem;font-weight:700;padding:2px 8px;border-radius:6px;background:rgba(255,255,255,0.08);color:var(--muted)">${child.grade}</span></h2>
