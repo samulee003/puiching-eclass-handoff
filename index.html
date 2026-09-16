@@ -546,6 +546,20 @@
     </footer>
   </div>
   <div class="toast" id="toast"></div>
+
+  <div id="qrModal" class="qr-modal" style="display:none; position:fixed; inset:0; z-index:999; background:rgba(0,0,0,0.75); backdrop-filter:blur(6px); align-items:center; justify-content:center; padding:16px;">
+    <div class="qr-modal-content" style="background:#1e293b; border:1px solid #334155; border-radius:16px; max-width:380px; width:100%; padding:20px; box-shadow:0 20px 40px rgba(0,0,0,0.5); text-align:center; color:#f8fafc; position:relative;">
+      <button type="button" id="qrModalClose" style="position:absolute; right:14px; top:14px; background:rgba(255,255,255,0.1); border:none; color:#cbd5e1; border-radius:50%; width:28px; height:28px; font-size:16px; cursor:pointer; line-height:1;">✕</button>
+      <div id="qrModalTitle" style="font-size:1.1rem; font-weight:800; margin-bottom:4px;">🐶 李悅平板配對</div>
+      <div style="font-size:0.8rem; color:#94a3b8; margin-bottom:14px;">用平板相機直接掃描下方 QR Code</div>
+      <div id="qrModalBox" style="background:#ffffff; border-radius:12px; padding:12px; display:inline-block; margin-bottom:14px; box-shadow:0 4px 12px rgba(0,0,0,0.15); min-width:180px; min-height:180px;"></div>
+      <div id="qrModalUrl" style="font-size:0.75rem; color:#94a3b8; word-break:break-all; background:rgba(0,0,0,0.3); padding:8px 10px; border-radius:8px; margin-bottom:14px; border:1px solid #334155;"></div>
+      <div style="display:flex; gap:8px;">
+        <button type="button" id="qrModalCopy" class="primary" style="flex:1; padding:10px; font-weight:700; cursor:pointer; border-radius:10px;">📋 複製配對網址</button>
+        <button type="button" id="qrModalOpen" style="flex:1; padding:10px; font-weight:700; cursor:pointer; border-radius:10px; background:rgba(255,255,255,0.08); border:1px solid #475569; color:#f8fafc;">在新分頁開啟 ↗</button>
+      </div>
+    </div>
+  </div>
 <script src="sync-config.js"></script>
 <script src="assets/qrcode.min.js"></script>
 <script src="sync.js"></script>
@@ -1014,7 +1028,10 @@ async function load() {
       card.innerHTML = `
         <div class="card-head">
           <h2>${avatar} ${child.zh} <span class="grade-badge" style="font-size:0.75rem;font-weight:700;padding:2px 8px;border-radius:6px;background:rgba(255,255,255,0.08);color:var(--muted)">${child.grade}</span></h2>
-          <a class="child-link ${pageCls}" href="${childPageHref(child.id)}">平板專屬頁 →</a>
+          <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+            <button type="button" class="btnPairQr" data-child-id="${child.id}" style="font-size:0.76rem;font-weight:700;padding:5px 10px;border-radius:99px;background:rgba(255,255,255,0.08);border:1px solid var(--border);color:var(--text);cursor:pointer;">📱 配對平板</button>
+            <a class="child-link ${pageCls}" href="${childPageHref(child.id)}">平板專屬頁 →</a>
+          </div>
         </div>
         <div class="meta">
           <span><span class="doneCount">${done}</span>／${total} 項完成</span>
@@ -1024,6 +1041,9 @@ async function load() {
         <div class="actions" style="margin:0 0 10px">
           <button class="ok btnChildClear" type="button">✨ 複製「${child.zh}清了」</button>
         </div>`;
+      card.querySelector('.btnPairQr')?.addEventListener('click', () => {
+        openPairModal(child.id);
+      });
       const progressBar = card.querySelector('.progress > i');
       const doneCount = card.querySelector('.doneCount');
       const pctCount = card.querySelector('.pctCount');
@@ -1118,7 +1138,58 @@ try {
     onTodosChanged: () => queueSyncReload(),
     onPointsChanged: (p) => { try { localStorage.setItem(POINTS_KEY, JSON.stringify(p || {})); } catch {} }
   });
-} catch {}
+function openPairModal(childId) {
+  let code = (localStorage.getItem('puiching-eclass-sync-code-v1') || '').trim();
+  if (!code || !/^[A-Z2-9-]{20,24}$/i.test(code)) {
+    const genBtn = document.querySelector('[data-sync-action="generate"]');
+    if (genBtn) genBtn.click();
+    code = (localStorage.getItem('puiching-eclass-sync-code-v1') || document.getElementById('sync-code')?.value || '').trim();
+  }
+  const normCode = code.toUpperCase().replace(/[\s-]/g, '');
+  const page = (childId === 'li-xin') ? 'gloria.html' : 'abigail.html';
+  const url = window.PuichingSync && window.PuichingSync.getChildPairingUrl
+    ? window.PuichingSync.getChildPairingUrl(page, normCode)
+    : (window.location.origin + window.location.pathname.replace(/index\.html$/, '') + page + '?sync=' + normCode);
+
+  const modal = document.getElementById('qrModal');
+  const modalTitle = document.getElementById('qrModalTitle');
+  const modalBox = document.getElementById('qrModalBox');
+  const modalUrl = document.getElementById('qrModalUrl');
+  const modalCopy = document.getElementById('qrModalCopy');
+  const modalOpen = document.getElementById('qrModalOpen');
+
+  if (modal && modalTitle && modalBox && modalUrl) {
+    modalTitle.innerHTML = (childId === 'li-xin' ? '🐰 李昕' : '🐶 李悅') + ' 平板專屬配對';
+    const svg = window.PuichingSync && window.PuichingSync.generateQrSvg
+      ? window.PuichingSync.generateQrSvg(url, { size: 200, margin: 2 })
+      : '';
+    modalBox.innerHTML = svg;
+    modalUrl.textContent = url;
+    modal.style.display = 'flex';
+
+    if (modalCopy) {
+      modalCopy.onclick = async () => {
+        await copyText(url);
+        toast('已複製配對網址！');
+      };
+    }
+    if (modalOpen) {
+      modalOpen.onclick = () => {
+        window.open(url, '_blank');
+      };
+    }
+  }
+}
+
+document.getElementById('qrModalClose')?.addEventListener('click', () => {
+  const modal = document.getElementById('qrModal');
+  if (modal) modal.style.display = 'none';
+});
+document.getElementById('qrModal')?.addEventListener('click', (e) => {
+  if (e.target && e.target.id === 'qrModal') {
+    e.target.style.display = 'none';
+  }
+});
 
 setupTabs();
 load();

@@ -810,10 +810,10 @@
         '        <strong>🦊 李悅（Abigail · P3）</strong>' +
         '      </div>' +
         '      <div class="sync-card-actions" style="display:flex; gap:6px; margin-bottom:8px;">' +
-        '        <button type="button" data-action="toggle-qr" data-target="abigail" style="cursor:pointer;">顯示 QR Code</button>' +
+        '        <button type="button" data-action="toggle-qr" data-target="abigail" style="cursor:pointer;">隱藏 QR Code</button>' +
         '        <button type="button" data-action="copy-url" data-target="abigail" style="cursor:pointer;">複製配對連結</button>' +
         '      </div>' +
-        '      <div class="sync-qr-container" id="sync-qr-abigail" style="display:none; text-align:center; padding:8px; background:#fff; border-radius:8px; margin-bottom:6px;"></div>' +
+        '      <div class="sync-qr-container" id="sync-qr-abigail" style="display:block; text-align:center; padding:10px; background:#fff; border-radius:10px; margin-bottom:8px; box-shadow:0 4px 12px rgba(0,0,0,0.15);"></div>' +
         '      <div class="sync-card-url" id="sync-url-abigail" style="font-size:0.72rem; color:var(--muted, #94a3b8); word-break:break-all;"></div>' +
         '    </div>' +
         '    <div class="sync-card" data-child="gloria" style="background: rgba(255,255,255,0.03); border: 1px solid var(--border, #334155); border-radius: 10px; padding: 10px;">' +
@@ -821,10 +821,10 @@
         '        <strong>🐰 李昕（Gloria · P1）</strong>' +
         '      </div>' +
         '      <div class="sync-card-actions" style="display:flex; gap:6px; margin-bottom:8px;">' +
-        '        <button type="button" data-action="toggle-qr" data-target="gloria" style="cursor:pointer;">顯示 QR Code</button>' +
+        '        <button type="button" data-action="toggle-qr" data-target="gloria" style="cursor:pointer;">隱藏 QR Code</button>' +
         '        <button type="button" data-action="copy-url" data-target="gloria" style="cursor:pointer;">複製配對連結</button>' +
         '      </div>' +
-        '      <div class="sync-qr-container" id="sync-qr-gloria" style="display:none; text-align:center; padding:8px; background:#fff; border-radius:8px; margin-bottom:6px;"></div>' +
+        '      <div class="sync-qr-container" id="sync-qr-gloria" style="display:block; text-align:center; padding:10px; background:#fff; border-radius:10px; margin-bottom:8px; box-shadow:0 4px 12px rgba(0,0,0,0.15);"></div>' +
         '      <div class="sync-card-url" id="sync-url-gloria" style="font-size:0.72rem; color:var(--muted, #94a3b8); word-break:break-all;"></div>' +
         '    </div>' +
         '  </div>' +
@@ -896,8 +896,18 @@
           var qrBox = document.getElementById('sync-qr-' + target);
           if (!qrBox) return;
           var isHidden = qrBox.style.display === 'none';
-          qrBox.style.display = isHidden ? 'block' : 'none';
-          btn.textContent = isHidden ? '隱藏 QR Code' : '顯示 QR Code';
+          if (isHidden) {
+            var childPage = (target === 'gloria') ? 'gloria.html' : 'abigail.html';
+            var code = normalizeCode(panelInput() ? panelInput().value : readSavedCode());
+            var url = getChildPairingUrl(childPage, code);
+            qrBox.innerHTML = generateQrSvgString(url, { size: 180, margin: 2 });
+            qrBox.style.display = 'block';
+            btn.textContent = '隱藏 QR Code';
+            try { qrBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } catch (e) {}
+          } else {
+            qrBox.style.display = 'none';
+            btn.textContent = '顯示 QR Code';
+          }
         });
       });
 
@@ -906,7 +916,9 @@
         btn.addEventListener('click', function () {
           var target = btn.getAttribute('data-target');
           var urlEl = document.getElementById('sync-url-' + target);
-          var url = urlEl ? urlEl.textContent : '';
+          var childPage = (target === 'gloria') ? 'gloria.html' : 'abigail.html';
+          var code = normalizeCode(panelInput() ? panelInput().value : readSavedCode());
+          var url = (urlEl && urlEl.textContent.trim()) ? urlEl.textContent.trim() : getChildPairingUrl(childPage, code);
           if (!url) return;
           if (navigator.clipboard && navigator.clipboard.writeText) {
             navigator.clipboard.writeText(url).then(function () {
