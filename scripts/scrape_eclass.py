@@ -238,6 +238,11 @@ class SimpleDOMParser(HTMLParser):
 def parse_homework_table_rows(tables: List[List[Dict[str, Any]]]) -> List[Dict[str, Any]]:
     """Parse extracted tables into standardized raw homework item dictionaries."""
     raw_items: List[Dict[str, Any]] = []
+    print(f"DEBUG: Total tables found: {len(tables)}")
+    for i, t in enumerate(tables):
+        if any(any("科目" in c.get("text", "") or "家課" in c.get("text", "") or "期限" in c.get("text", "") or "截止" in c.get("text", "") for c in r.get("cells", [])) for r in t):
+            rows_snippet = [" | ".join(c.get("text", "")[:20] for c in r.get("cells", [])[:6]) for r in t[:5]]
+            print(f"DEBUG Table {i} (MATCHED KEYWORD, {len(t)} rows): {rows_snippet}")
 
     for table in tables:
         if not table:
