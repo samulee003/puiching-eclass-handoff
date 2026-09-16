@@ -8,8 +8,14 @@
 
 ## 核心里程碑完成狀況
 
-1. **M1 雲端同步與免打字配對**：
-   - 實作 `scripts/setup_firebase.sh` 自動化配置 Realtime Database、匿名驗證與自動注入 Web SDK 配置至 `sync-config.js`。
+1. **M1 雲端同步與免打字配對（已全線打通上線）**：
+   - 透過 Firebase CLI / Management API 完成真實雲端環境配置：
+     - 專案：`puiching-eclass`
+     - 資料庫：`puiching-eclass-default-rtdb`（位於 `asia-southeast1`）
+     - 認證方式：已成功啟用匿名認證（Anonymous Authentication）
+     - 安全性規則：已部署 `firebase.rules.json` 至雲端 RTDB
+     - Web App：已建立 `puiching-web` 並將正式客戶端 Config 寫入 `sync-config.js`
+     - 雲端實測：經由 Node 腳本對真實 Firebase 執行匿名登入、寫入合規驗證、讀取與清理，**100% 雙向即時同步驗證成功**！
    - `index.html` 內建原生 SVG QR Code 向量產出（`assets/qrcode.min.js`，零外部 API 依賴、無資安外洩風險）。
    - 兩孩平板頁面（`abigail.html` / `gloria.html`）支援讀取 `?familyId=`、`?sync=` 等參數實現零打字一鍵配對，載入後自動清除網址列參數。
    - 離線優先架構：未連線自動平滑降級為本機模式，斷網操作自動寫入本機佇列，連線恢復時依序重播。
