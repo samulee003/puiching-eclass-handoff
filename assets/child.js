@@ -374,6 +374,76 @@
     });
   }
 
+  var confettiParticles = [];
+  var confettiRaf = null;
+
+  function triggerConfetti() {
+    try {
+      var canvas = document.getElementById('confetti-canvas');
+      if (!canvas) {
+        canvas = document.createElement('canvas');
+        canvas.id = 'confetti-canvas';
+        canvas.style.position = 'fixed';
+        canvas.style.top = '0';
+        canvas.style.left = '0';
+        canvas.style.width = '100vw';
+        canvas.style.height = '100vh';
+        canvas.style.pointerEvents = 'none';
+        canvas.style.zIndex = '9999';
+        document.body.appendChild(canvas);
+      }
+      var width = canvas.width = window.innerWidth;
+      var height = canvas.height = window.innerHeight;
+      var colors = ['#f59e0b', '#ec4899', '#3b82f6', '#10b981', '#8b5cf6', '#ef4444', '#fcd34d'];
+      for (var i = 0; i < 55; i++) {
+        confettiParticles.push({
+          x: width * (0.3 + 0.4 * Math.random()),
+          y: height * 0.45,
+          vx: (Math.random() - 0.5) * 14,
+          vy: (Math.random() - 0.8) * 15,
+          size: Math.random() * 8 + 6,
+          color: colors[Math.floor(Math.random() * colors.length)],
+          rotation: Math.random() * 360,
+          rotationSpeed: (Math.random() - 0.5) * 10,
+          life: 1
+        });
+      }
+      if (!confettiRaf) {
+        var ctx = canvas.getContext('2d');
+        function frame() {
+          ctx.clearRect(0, 0, width, height);
+          var nextParticles = [];
+          for (var j = 0; j < confettiParticles.length; j++) {
+            var p = confettiParticles[j];
+            p.x += p.vx;
+            p.y += p.vy;
+            p.vy += 0.38;
+            p.rotation += p.rotationSpeed;
+            p.life -= 0.015;
+            if (p.life > 0 && p.y < height + 50) {
+              ctx.save();
+              ctx.translate(p.x, p.y);
+              ctx.rotate(p.rotation * Math.PI / 180);
+              ctx.fillStyle = p.color;
+              ctx.globalAlpha = Math.max(0, p.life);
+              ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.6);
+              ctx.restore();
+              nextParticles.push(p);
+            }
+          }
+          confettiParticles = nextParticles;
+          if (confettiParticles.length > 0) {
+            confettiRaf = requestAnimationFrame(frame);
+          } else {
+            ctx.clearRect(0, 0, width, height);
+            confettiRaf = null;
+          }
+        }
+        confettiRaf = requestAnimationFrame(frame);
+      }
+    } catch (e) {}
+  }
+
   function redeem(child, rewardId) {
     var cfg = rewardsConfig();
     var item = cfg.catalog.filter(function (i) { return i.id === rewardId; })[0];
@@ -385,18 +455,27 @@
     }
     s.spent += item.cost;
     s.redemptions.push({ id: item.id, name: item.name, cost: item.cost, at: new Date().toISOString() });
+    if (s.redemptions.length > 50) s.redemptions = s.redemptions.slice(-50);
     writePointsState(s);
     var msg = '🎁 ' + child.zh + '想用 ' + item.cost + ' 分換 ' + (item.emoji || '') + item.name +
       '（剩 ' + balanceOf(s) + ' 分）— 請爸媽兌現小零食';
     copy(msg);
     toast('🎉 已換 ' + (item.emoji || '') + item.name + '！訊息已複製，拿給爸媽');
+    triggerConfetti();
     renderShop(child);
     updatePointsBadge();
   }
 
   function updatePointsBadge() {
     var el = document.getElementById('points');
-    if (el) el.textContent = balanceOf(pointsState());
+    if (el) {
+      el.textContent = balanceOf(pointsState());
+      var pill = el.closest ? el.closest('.points-pill') : el.parentElement;
+      if (pill) {
+        pill.style.transform = 'scale(1.15)';
+        setTimeout(function () { pill.style.transform = ''; }, 220);
+      }
+    }
   }
 
   function appendTask(ul, child, secKey, it, store, today) {
@@ -431,7 +510,10 @@
       li.classList.toggle('done', nowDone);
       if (nowDone) {
         var gained = awardForTask(child, key);
-        if (gained > 0) toast('+' + gained + ' ⭐ 積分！');
+        if (gained > 0) {
+          toast('+' + gained + ' ⭐ 積分！');
+          triggerConfetti();
+        }
         updatePointsBadge();
         renderShop(child);
       }
@@ -512,6 +594,7 @@
       var text = child.zh + '清了';
       copy(text);
       toast('🎉 太棒了！已複製「' + text + '」，拿給爸媽貼給 Grok');
+      triggerConfetti();
     } else {
       var open = [];
       (child.due_today || []).forEach(function (it) {
