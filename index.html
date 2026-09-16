@@ -1138,6 +1138,8 @@ try {
     onTodosChanged: () => queueSyncReload(),
     onPointsChanged: (p) => { try { localStorage.setItem(POINTS_KEY, JSON.stringify(p || {})); } catch {} }
   });
+} catch {}
+
 function openPairModal(childId) {
   let code = (localStorage.getItem('puiching-eclass-sync-code-v1') || '').trim();
   if (!code || !/^[A-Z2-9-]{20,24}$/i.test(code)) {
