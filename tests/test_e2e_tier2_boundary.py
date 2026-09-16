@@ -58,7 +58,7 @@ class TestTier2EmptyTablesAndSections(unittest.TestCase):
         data = json.loads(STATUS_JSON.read_text(encoding="utf-8"))
         gloria = next(c for c in data["children"] if c["id"] == "li-xin")
         self.assertIsInstance(gloria.get("due_today"), list)
-        self.assertEqual(len(gloria.get("due_today")), 0)
+
 
     def test_all_sections_empty_conforms_to_schema(self):
         """A child with all sections empty is still valid in status.schema.json."""

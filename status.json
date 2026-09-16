@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "updated_at": "2026-09-16T03:57:11Z",
+  "updated_at": "2026-09-16T07:13:37Z",
   "timezone": "Asia/Macau",
   "repo": "https://github.com/samulee003/puiching-eclass-handoff",
   "rules": {
@@ -151,7 +151,8 @@
         }
       ],
       "cleared": false,
-      "chrome_password_saved": false
+      "chrome_password_saved": false,
+      "tests_this_week": []
     }
   ],
   "scan_schedule_macau": {
@@ -176,5 +177,36 @@
     "checkable": true,
     "storage": "localStorage",
     "close_loop": "paste 李悅清了 / 李昕清了 / 兩個清了 to Grok"
+  },
+  "rewards": {
+    "points_per_task": 10,
+    "all_done_bonus": 20,
+    "note": "積分存孩子平板 localStorage；兌換需家長把實體零食交付才算完成",
+    "catalog": [
+      {
+        "id": "gummy",
+        "name": "小熊軟糖",
+        "emoji": "🐻",
+        "cost": 50
+      },
+      {
+        "id": "choco",
+        "name": "巧克力",
+        "emoji": "🍫",
+        "cost": 80
+      },
+      {
+        "id": "chips",
+        "name": "洋芋片",
+        "emoji": "🥔",
+        "cost": 120
+      },
+      {
+        "id": "icecream",
+        "name": "雪糕",
+        "emoji": "🍦",
+        "cost": 150
+      }
+    ]
   }
 }

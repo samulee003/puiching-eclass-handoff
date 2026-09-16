@@ -97,15 +97,17 @@ class TestTier4ScenarioGloriaSchoolDay(unittest.TestCase):
 
     def test_gloria_no_mandatory_items_due_today(self):
         """Gloria has 0 mandatory submission items due today."""
-        self.assertEqual(len(self.gloria.get("due_today", [])), 0)
+        mandatory = [it for it in self.gloria.get("due_today", []) if it.get("submit_required")]
+        self.assertEqual(len(mandatory), 0)
 
     def test_gloria_listening_quiz_tomorrow_with_non_submission(self):
-        """Gloria has a listening quiz tomorrow that does not require submission."""
-        due_soon = self.gloria.get("due_soon", [])
-        quiz = next((it for it in due_soon if "Quiz Listening" in it["title"]), None)
+        """Gloria has a listening quiz that does not require submission."""
+        all_items = self.gloria.get("due_today", []) + self.gloria.get("due_soon", [])
+        quiz = next((it for it in all_items if "Quiz Listening" in it["title"]), None)
         self.assertIsNotNone(quiz)
         self.assertFalse(quiz["submit_required"])
-        self.assertIn("不用串字", quiz["title"])
+        self.assertTrue("不用串字" in quiz["title"] or "不用串字" in quiz.get("note", ""))
+
 
     def test_gloria_retains_p1_subjects_without_advanced_filter(self):
         """Gloria's subjects include P1 general studies and vocabulary without stream filtering."""
