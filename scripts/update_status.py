@@ -319,6 +319,7 @@ def update_child_status(
     dashboard_path: Optional[Union[str, Path]] = None,
     validate: bool = True,
     now_utc: Optional[datetime.datetime] = None,
+    scrape: bool = False,
 ) -> Dict[str, Any]:
     """Importable library entrypoint to atomically update status.json and DASHBOARD.md."""
     norm_child_id = normalize_child_id(child_id)
@@ -395,8 +396,22 @@ def update_child_status(
         children_list.append(target_child)
 
     # 4. Update target child homework buckets while preserving all other child metadata
-    for sec in SECTIONS:
-        target_child[sec] = normalized_buckets[sec]
+    total_new_items = sum(len(normalized_buckets[s]) for s in SECTIONS)
+    if scrape and total_new_items == 0:
+        print(f"INFO: Scraper returned 0 items for {norm_child_id}. Preserving existing items to avoid accidental data loss.")
+    else:
+        # Preserve long-term annual items in 'other' (e.g., reading awards) if scrape didn't include them
+        if scrape and total_new_items > 0:
+            existing_long_term = [
+                it for it in target_child.get("other", [])
+                if any(k in it.get("title", "") for k in ("勤讀", "閱讀卡", "生詞", "內線"))
+            ]
+            for lt_it in existing_long_term:
+                if not any(it.get("title") == lt_it.get("title") for it in normalized_buckets["other"]):
+                    normalized_buckets["other"].append(lt_it)
+
+        for sec in SECTIONS:
+            target_child[sec] = normalized_buckets[sec]
 
     # 5. Update top-level updated_at with UTC ISO-8601 string ending in 'Z'
     if now_utc is None:
@@ -544,6 +559,7 @@ def main() -> int:
             status_path=args.status_json,
             dashboard_path=args.dashboard_md,
             validate=not args.no_validate,
+            scrape=bool(args.scrape),
         )
         print(
             f"Successfully updated {child_id} in {args.status_json} and {args.dashboard_md} with compliance validation."
