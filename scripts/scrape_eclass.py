@@ -686,6 +686,8 @@ class EClassScraper:
             with self.opener.open(req, timeout=15) as resp:
                 resp_text = resp.read().decode("utf-8", errors="replace")
                 final_url = resp.geturl()
+                print(f"DEBUG [{self.child_id}]: Login final URL: {final_url}")
+                print(f"DEBUG [{self.child_id}]: Cookies: {[c.name for c in self.cookie_jar]}")
         except (urllib.error.URLError, TimeoutError, OSError) as exc:
             raise LoginRequiredError(f"LOGIN_REQUIRED: eClass connection failed ({exc})") from exc
 
@@ -715,9 +717,14 @@ class EClassScraper:
                 with self.opener.open(req, timeout=15) as resp:
                     final_url = resp.geturl()
                     # If redirected to login page or root without session
-                    if "login" in final_url.lower() or final_url.rstrip("/").endswith("puiching.edu.mo"):
-                        raise LoginRequiredError("LOGIN_REQUIRED: Session expired or redirected to login")
-                    return resp.read().decode("utf-8", errors="replace")
+                    body = resp.read().decode("utf-8", errors="replace")
+                    print(f"DEBUG [{self.child_id}]: Fetched {final_url} (length: {len(body)})")
+                    title_m = re.search(r"<title>(.*?)</title>", body, re.I)
+                    print(f"DEBUG [{self.child_id}]: Page title: {title_m.group(1) if title_m else 'No title'}")
+                    # Print tables or links found
+                    table_count = len(re.findall(r"<table", body, re.I))
+                    print(f"DEBUG [{self.child_id}]: Table tags count: {table_count}")
+                    return body
             except LoginRequiredError:
                 raise
             except (urllib.error.URLError, TimeoutError, OSError) as exc:
