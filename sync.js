@@ -134,27 +134,42 @@
    */
   function updatePanel(label, message, connected) {
     var panel = document.getElementById('sync-panel');
-    if (!panel) return;
-    var s = panel.querySelector('[data-sync-state]');
-    var m = panel.querySelector('[data-sync-message]');
-    if (s) {
-      s.textContent = label;
-      s.classList.remove('connected', 'local', 'connecting', 'offline');
-      if (label.indexOf('已同步') !== -1 || connected) {
-        s.classList.add('connected');
-        s.setAttribute('data-sync-state', 'connected');
-      } else if (label.indexOf('本機模式') !== -1) {
-        s.classList.add('local');
-        s.setAttribute('data-sync-state', 'local');
-      } else if (label.indexOf('連接中') !== -1) {
-        s.classList.add('connecting');
-        s.setAttribute('data-sync-state', 'connecting');
-      } else if (label.indexOf('已離線') !== -1) {
-        s.classList.add('offline');
-        s.setAttribute('data-sync-state', 'offline');
+    if (panel) {
+      var s = panel.querySelector('[data-sync-state]');
+      var m = panel.querySelector('[data-sync-message]');
+      if (s) {
+        s.textContent = label;
+        s.classList.remove('connected', 'local', 'connecting', 'offline');
+        if (label.indexOf('已同步') !== -1 || connected) {
+          s.classList.add('connected');
+          s.setAttribute('data-sync-state', 'connected');
+        } else if (label.indexOf('本機模式') !== -1) {
+          s.classList.add('local');
+          s.setAttribute('data-sync-state', 'local');
+        } else if (label.indexOf('連接中') !== -1) {
+          s.classList.add('connecting');
+          s.setAttribute('data-sync-state', 'connecting');
+        } else if (label.indexOf('已離線') !== -1) {
+          s.classList.add('offline');
+          s.setAttribute('data-sync-state', 'offline');
+        }
       }
+      if (m && message !== undefined) m.textContent = message;
     }
-    if (m && message !== undefined) m.textContent = message;
+
+    document.querySelectorAll('[data-sync-state-badge]').forEach(function (b) {
+      b.textContent = label;
+      b.classList.remove('connected', 'local', 'connecting', 'offline');
+      if (label.indexOf('已同步') !== -1 || connected) {
+        b.classList.add('connected');
+      } else if (label.indexOf('本機模式') !== -1) {
+        b.classList.add('local');
+      } else if (label.indexOf('連接中') !== -1) {
+        b.classList.add('connecting');
+      } else if (label.indexOf('已離線') !== -1) {
+        b.classList.add('offline');
+      }
+    });
   }
   function panelInput() { return document.querySelector('#sync-code'); }
 

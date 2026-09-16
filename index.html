@@ -513,6 +513,7 @@
         <div id="updated" class="sub"><span class="live-dot"></span><span id="updated-text">載入中…</span></div>
       </div>
       <div class="actions">
+        <button type="button" class="sync-state local" data-sync-state-badge id="topSyncBadge" style="cursor:pointer; font-size:0.78rem; font-weight:700; padding:6px 12px; border-radius:8px; border:none;" onclick="var d=document.getElementById('syncFold');if(d){d.open=true;d.scrollIntoView({behavior:'smooth'});}" title="點擊展開家庭配對設定">本機模式 💻</button>
         <button class="primary" id="btnCopyAll">📋 複製今日摘要</button>
         <a href="https://eclass.puiching.edu.mo/templates/" target="_blank" rel="noopener">↗ 開 eClass</a>
       </div>
@@ -538,8 +539,8 @@
       <span id="store-hint">勾選預設存本機，連上雲端後自動同步</span>
       <button id="btnReset" type="button">清除勾選</button>
       <a href="status.json">status.json</a>
-      <details class="sync-fold">
-        <summary>☁️ 雲端同步（選用）</summary>
+      <details class="sync-fold" id="syncFold">
+        <summary>☁️ 跨裝置雲端同步（配對平板專用）</summary>
         <div id="sync-panel" class="sync-panel" data-sync-role="parent"></div>
       </details>
     </footer>
@@ -965,7 +966,21 @@ function setupTabs() {
 }
 
 function childPageHref(id) {
-  return id === 'li-xin' ? 'gloria.html' : 'abigail.html';
+  const page = id === 'li-xin' ? 'gloria.html' : 'abigail.html';
+  try {
+    const code = (localStorage.getItem('puiching-eclass-sync-code-v1') || '').trim();
+    if (/^[A-Z2-9-]{20,24}$/i.test(code)) {
+      return page + '?sync=' + encodeURIComponent(code.toUpperCase());
+    }
+  } catch (e) {}
+  return page;
+}
+
+function updateChildLinks() {
+  document.querySelectorAll('.child-link').forEach(a => {
+    const isXin = a.classList.contains('xin') || (a.getAttribute('href') || '').includes('gloria');
+    a.href = childPageHref(isXin ? 'li-xin' : 'li-yue');
+  });
 }
 
 async function load() {

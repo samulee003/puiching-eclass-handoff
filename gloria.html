@@ -15,7 +15,10 @@
 </head>
 <body data-accent="xin" class="simple">
   <div class="wrap">
-    <div class="topnav"><a href="index.html">家長總覽 →</a></div>
+    <div class="topnav">
+      <a href="index.html">家長總覽 →</a>
+      <button type="button" class="sync-state local" data-sync-state-badge id="childSyncBadge" style="cursor:pointer; border:1px solid var(--border);" onclick="var d=document.querySelector('.sync-fold');if(d){d.open=true;d.scrollIntoView({behavior:'smooth'});}" title="點擊查看同步狀態">本機模式 💻</button>
+    </div>
     <header class="hero">
       <div class="hero-top">
         <div class="avatar" id="avatar">🐰</div>
