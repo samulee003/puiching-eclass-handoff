@@ -31,13 +31,14 @@ import unittest
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 STATUS_JSON = ROOT / "status.json"
 FIXTURES_DIR = ROOT / "tests" / "fixtures"
+SCENARIO_JSON = FIXTURES_DIR / "scenario_status.json" if (FIXTURES_DIR / "scenario_status.json").exists() else STATUS_JSON
 
 
 class TestTier4ScenarioAbigailSchoolDay(unittest.TestCase):
     """Scenario A: Abigail (P3) Typical School Day Routine."""
 
     def setUp(self):
-        self.status = json.loads(STATUS_JSON.read_text(encoding="utf-8"))
+        self.status = json.loads(SCENARIO_JSON.read_text(encoding="utf-8"))
         self.abigail = next(c for c in self.status["children"] if c["id"] == "li-yue")
         self.rewards = self.status["rewards"]
 
@@ -86,7 +87,7 @@ class TestTier4ScenarioGloriaSchoolDay(unittest.TestCase):
     """Scenario B: Gloria (P1) First-Grade Routine."""
 
     def setUp(self):
-        self.status = json.loads(STATUS_JSON.read_text(encoding="utf-8"))
+        self.status = json.loads(SCENARIO_JSON.read_text(encoding="utf-8"))
         self.gloria = next(c for c in self.status["children"] if c["id"] == "li-xin")
 
     def test_gloria_profile_and_grade(self):
@@ -125,7 +126,7 @@ class TestTier4ScenarioExamAndQuizWeek(unittest.TestCase):
     """Scenario C: Exam & Quiz Heavy Week."""
 
     def setUp(self):
-        self.status = json.loads(STATUS_JSON.read_text(encoding="utf-8"))
+        self.status = json.loads(SCENARIO_JSON.read_text(encoding="utf-8"))
         self.abigail = next(c for c in self.status["children"] if c["id"] == "li-yue")
         self.gloria = next(c for c in self.status["children"] if c["id"] == "li-xin")
 
@@ -150,7 +151,7 @@ class TestTier4ScenarioRewardRedemption(unittest.TestCase):
     """Scenario D: Homework Completion & Snack Shop Redemption."""
 
     def setUp(self):
-        self.status = json.loads(STATUS_JSON.read_text(encoding="utf-8"))
+        self.status = json.loads(SCENARIO_JSON.read_text(encoding="utf-8"))
         self.catalog = self.status["rewards"]["catalog"]
 
     def test_catalog_has_affordable_snacks(self):
