@@ -638,7 +638,7 @@
         if (CHILD_ID === 'li-yue') {
           avatarEl.innerHTML = '<img src="assets/abigail_avatar.jpg" alt="🐶 李悅的狗狗頭像" onerror="this.outerHTML=\'🐶\'">';
         } else {
-          avatarEl.textContent = '🐰';
+          avatarEl.innerHTML = '<img src="assets/gloria_avatar.jpg" alt="🐰 李昕的兔兔頭像" onerror="this.outerHTML=\'🐰\'">';
         }
         document.getElementById('updated').textContent = (function () {
           if (!data.updated_at) return '';
