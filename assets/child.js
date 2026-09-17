@@ -43,9 +43,9 @@
     try { window.PuichingSync && window.PuichingSync.replaceTodos(s); } catch (e) {}
   }
 
-  // Points state is per-child and per-device (localStorage). Points are awarded the
-  // first time a task is checked and are NOT removed on uncheck, so children cannot
-  // farm points by toggling. `spent` tracks redemptions.
+  // Points state is per-child and per-device (localStorage). Points are awarded
+  // when a task is checked, and revoked if unchecked/cancelled, keeping points
+  // strictly synchronized with actual completed tasks. `spent` tracks redemptions.
   function loadPoints() {
     try { return JSON.parse(localStorage.getItem(POINTS_KEY) || '{}'); }
     catch (e) { return {}; }
@@ -338,6 +338,70 @@
     return gained;
   }
 
+  // Revoke points when a task is unchecked/cancelled. Returns points deducted (0 if none).
+  function revokeForTask(child, key) {
+    var cfg = rewardsConfig();
+    var s = pointsState();
+    var deducted = 0;
+    if (s.awarded[key]) {
+      delete s.awarded[key];
+      s.earned = Math.max(s.spent, s.earned - cfg.perTask);
+      deducted += cfg.perTask;
+    }
+    // If daily bonus was awarded for today, check if all today's items are still done
+    var todayIso = todayMacau();
+    if (s.bonusDates[todayIso]) {
+      var store = loadStore();
+      var todayItems = child.due_today || [];
+      var allTodayDone = todayItems.length > 0 && todayItems.every(function (it) {
+        return store[itemKey(child.id, 'due_today', it)];
+      });
+      if (!allTodayDone) {
+        delete s.bonusDates[todayIso];
+        s.earned = Math.max(s.spent, s.earned - cfg.bonus);
+        deducted += cfg.bonus;
+      }
+    }
+    writePointsState(s);
+    return deducted;
+  }
+
+  // Reconcile points: heal any orphaned awarded flags where tasks are currently unchecked
+  function reconcilePoints(child) {
+    var cfg = rewardsConfig();
+    var s = pointsState();
+    var store = loadStore();
+    var changed = false;
+    var todayIso = todayMacau();
+
+    sectionItems(child).forEach(function (pair) {
+      pair[1].forEach(function (it) {
+        var k = itemKey(child.id, pair[0], it);
+        if (s.awarded[k] && !store[k]) {
+          delete s.awarded[k];
+          s.earned = Math.max(s.spent, s.earned - cfg.perTask);
+          changed = true;
+        }
+      });
+    });
+
+    if (s.bonusDates[todayIso]) {
+      var todayItems = child.due_today || [];
+      var allTodayDone = todayItems.length > 0 && todayItems.every(function (it) {
+        return store[itemKey(child.id, 'due_today', it)];
+      });
+      if (!allTodayDone) {
+        delete s.bonusDates[todayIso];
+        s.earned = Math.max(s.spent, s.earned - cfg.bonus);
+        changed = true;
+      }
+    }
+
+    if (changed) {
+      writePointsState(s);
+    }
+  }
+
   function renderShop(child) {
     var shop = document.getElementById('shop');
     if (!shop) return;
@@ -514,9 +578,14 @@
           toast('+' + gained + ' ⭐ 積分！');
           triggerConfetti();
         }
-        updatePointsBadge();
-        renderShop(child);
+      } else {
+        var lost = revokeForTask(child, key);
+        if (lost > 0) {
+          toast('-' + lost + ' ⭐ 積分（已取消）');
+        }
       }
+      updatePointsBadge();
+      renderShop(child);
       renderTimeline(child);
       updateProgress(child);
     }
@@ -573,6 +642,7 @@
     if (!root.children.length) {
       root.appendChild(el('div', 'empty', '🎈 今天沒有功課項目，好好玩吧！'));
     }
+    reconcilePoints(child);
     renderTimeline(child);
     renderShop(child);
     updatePointsBadge();

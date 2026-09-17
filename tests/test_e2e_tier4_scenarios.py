@@ -191,6 +191,48 @@ class TestTier4ScenarioRewardRedemption(unittest.TestCase):
         self.assertEqual(len(points_record["redemptions"]), 1)
         self.assertEqual(points_record["redemptions"][0]["id"], "gummy")
 
+    def test_mistaken_click_and_cancel_revokes_points(self):
+        """Mistakenly checking a task and unchecking it reverts points to prevent accumulation."""
+        pts_per_task = 10
+        bonus_pts = 20
+        points_record = {
+            "earned": 0,
+            "spent": 0,
+            "awarded": {},
+            "bonusDates": {},
+            "redemptions": []
+        }
+        today_iso = "2026-09-17"
+
+        # Step 1: Accidentally check task-1
+        points_record["awarded"]["task-1"] = True
+        points_record["earned"] += pts_per_task
+        self.assertEqual(points_record["earned"], 10)
+
+        # Step 2: Cancel/uncheck task-1 (bugfix: revoke task points)
+        self.assertTrue(points_record["awarded"].get("task-1"))
+        del points_record["awarded"]["task-1"]
+        points_record["earned"] = max(points_record["spent"], points_record["earned"] - pts_per_task)
+        self.assertEqual(points_record["earned"], 0)
+        self.assertNotIn("task-1", points_record["awarded"])
+
+        # Step 3: Test with daily bonus: mistakenly check all tasks, then uncheck one
+        # Checking all tasks
+        for k in ["t-1", "t-2"]:
+            points_record["awarded"][k] = True
+            points_record["earned"] += pts_per_task
+        points_record["bonusDates"][today_iso] = True
+        points_record["earned"] += bonus_pts
+        self.assertEqual(points_record["earned"], 40)  # 20 + 20
+
+        # Now uncheck t-1
+        del points_record["awarded"]["t-1"]
+        points_record["earned"] = max(points_record["spent"], points_record["earned"] - pts_per_task)
+        # Because today tasks are no longer all done, daily bonus is revoked
+        del points_record["bonusDates"][today_iso]
+        points_record["earned"] = max(points_record["spent"], points_record["earned"] - bonus_pts)
+        self.assertEqual(points_record["earned"], 10)  # only t-2 remains
+
 
 if __name__ == "__main__":
     unittest.main()
