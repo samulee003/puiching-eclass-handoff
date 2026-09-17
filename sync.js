@@ -1241,12 +1241,44 @@
     return code;
   }
 
+  function syncNow() {
+    var saved = readSavedCode();
+    if (state.db && typeof state.db.goOnline === 'function') {
+      try { state.db.goOnline(); } catch (e) {}
+    }
+    if (state.connected && state.roomRef) {
+      flushPending();
+      var timeoutPromise = new Promise(function (res) {
+        var t = setTimeout(function () {
+          res({ val: function () { return {}; } });
+        }, 5000);
+        state.roomRef.once('value').then(function (snap) {
+          clearTimeout(t);
+          res(snap);
+        }).catch(function () {
+          clearTimeout(t);
+          res({ val: function () { return {}; } });
+        });
+      });
+      return timeoutPromise.then(function (snap) {
+        var root = (snap && snap.val()) || {};
+        applyRemote('todos', parseTodoRecords(root.todos));
+        applyRemote('points', parsePointRecords(root.points));
+        return true;
+      }).catch(function () { return false; });
+    } else if (saved && CODE_PATTERN.test(saved) && isConfigured()) {
+      return connect(saved, false);
+    }
+    return Promise.resolve(false);
+  }
+
   window.PuichingSync = {
     register: register,
     replaceTodos: function (v) { publishChanges('todos', v); },
     replacePoints: function (v) { publishChanges('points', v); },
     connect: connect,
     disconnect: disconnect,
+    syncNow: syncNow,
     isConfigured: isConfigured,
     generateQrSvg: generateQrSvgString,
     getChildPairingUrl: getChildPairingUrl,

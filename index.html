@@ -584,9 +584,9 @@
       </div>
     </div>
   </div>
-<script src="sync-config.js?v=20260916-03"></script>
-<script src="assets/qrcode.min.js?v=20260916-03"></script>
-<script src="sync.js?v=20260916-03"></script>
+<script src="sync-config.js?v=20260917-06"></script>
+<script src="assets/qrcode.min.js?v=20260917-06"></script>
+<script src="sync.js?v=20260917-06"></script>
 <script>
 const STORE_KEY = 'puiching-eclass-todos-v1';
 const POINTS_KEY = 'puiching-eclass-points-v1';
@@ -616,6 +616,16 @@ function toast(msg) {
   setTimeout(() => t.style.display = 'none', 2200);
 }
 
+function escapeHtml(str) {
+  if (str == null) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 async function copyText(text) {
   try {
     if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -626,10 +636,13 @@ async function copyText(text) {
   try {
     const ta = document.createElement('textarea');
     ta.value = text;
+    ta.setAttribute('readonly', '');
     ta.style.position = 'fixed';
     ta.style.opacity = '0';
+    ta.style.left = '-9999px';
     document.body.appendChild(ta);
     ta.select();
+    try { ta.setSelectionRange(0, 99999); } catch (e) {}
     const ok = document.execCommand('copy');
     document.body.removeChild(ta);
     return ok;
@@ -737,9 +750,9 @@ function renderItem(childId, section, it, store, onToggle) {
   li.innerHTML = `
     <input type="checkbox" ${done ? 'checked' : ''} aria-label="完成" />
     <div>
-      <div class="title">${it.subject} · ${it.title}</div>
-      ${it.detail ? `<div class="item-detail">${it.detail}</div>` : ''}
-      <div class="row"><span>截止 ${it.due || '—'}</span>${must}${it.note ? `<span class="pill">${it.note}</span>` : ''}</div>
+      <div class="title">${escapeHtml(it.subject)} · ${escapeHtml(it.title)}</div>
+      ${it.detail ? `<div class="item-detail">${escapeHtml(it.detail)}</div>` : ''}
+      <div class="row"><span>截止 ${escapeHtml(it.due || '—')}</span>${must}${it.note ? `<span class="pill">${escapeHtml(it.note)}</span>` : ''}</div>
     </div>`;
   li.querySelector('input').addEventListener('change', (e) => onToggle(key, e.target.checked, li));
   return { li, key, done };
@@ -856,8 +869,8 @@ function renderCalendar(data, store) {
           ${overdue ? '<span class="cal-item-badge overdue">逾期</span>' : ''}
           ${done ? '<span class="pill">已完成</span>' : ''}
         </div>
-        <div class="title" style="font-size:.85rem;margin-top:2px">${row.item.subject} · ${row.item.title}</div>
-        <div class="row"><span>${row.sectionLabel}</span></div>
+        <div class="title" style="font-size:.85rem;margin-top:2px">${escapeHtml(row.item.subject)} · ${escapeHtml(row.item.title)}</div>
+        <div class="row"><span>${escapeHtml(row.sectionLabel)}</span></div>
       </li>`;
     }
     html += '</ul><button type="button" class="primary" id="calJumpList" style="margin-top:8px">跳至待辦清單</button></div>';
@@ -932,7 +945,7 @@ function renderGantt(data, store) {
     if (!rows.length) continue;
     const cls = CHILD_COLORS[child.id] || 'yue';
     groupsHtml += `<div class="gantt-group">
-      <div class="gantt-group-title ${cls}">${child.zh}</div>`;
+      <div class="gantt-group-title ${cls}">${escapeHtml(child.zh)}</div>`;
     for (const row of rows) {
       const done = !!store[row.key];
       const overdue = cmpYmd(row.due, today) < 0;
@@ -948,13 +961,14 @@ function renderGantt(data, store) {
       }
       const left = (daysBetween(rangeStart, barStart) / spanDays) * 100;
       const width = Math.max((daysBetween(barStart, barEnd) / spanDays) * 100, 1.5);
-      const label = `${row.item.subject} · ${shortTitle(row.item)}`;
+      const label = `${escapeHtml(row.item.subject)} · ${escapeHtml(shortTitle(row.item))}`;
+      const escapedTitle = escapeHtml(row.item.title);
       groupsHtml += `
         <div class="gantt-row">
-          <div class="gantt-label" title="${row.item.title}">${label}</div>
+          <div class="gantt-label" title="${escapedTitle}">${label}</div>
           <div class="gantt-track">
             <div class="gantt-bar ${cls}${overdue ? ' overdue' : ''}${done ? ' done' : ''}"
-              style="left:${left}%;width:${width}%" title="${row.item.title}"></div>
+              style="left:${left}%;width:${width}%" title="${escapedTitle}"></div>
           </div>
         </div>`;
     }
@@ -1052,9 +1066,9 @@ async function load() {
       const avatar = child.id === 'li-xin' ? '🐰' : '<img src="assets/abigail_avatar.jpg" alt="🐶" style="width:24px;height:24px;border-radius:50%;vertical-align:middle;display:inline-block;margin-right:4px;object-fit:cover;" onerror="this.outerHTML=\'🐶\'">';
       card.innerHTML = `
         <div class="card-head">
-          <h2>${avatar} ${child.zh} <span class="grade-badge" style="font-size:0.75rem;font-weight:700;padding:2px 8px;border-radius:6px;background:rgba(255,255,255,0.08);color:var(--muted)">${child.grade}</span></h2>
+          <h2>${avatar} ${escapeHtml(child.zh)} <span class="grade-badge" style="font-size:0.75rem;font-weight:700;padding:2px 8px;border-radius:6px;background:rgba(255,255,255,0.08);color:var(--muted)">${escapeHtml(child.grade)}</span></h2>
           <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
-            <button type="button" class="btnPairQr" data-child-id="${child.id}" style="font-size:0.76rem;font-weight:700;padding:5px 10px;border-radius:99px;background:rgba(255,255,255,0.08);border:1px solid var(--border);color:var(--text);cursor:pointer;">📱 配對平板</button>
+            <button type="button" class="btnPairQr" data-child-id="${escapeHtml(child.id)}" style="font-size:0.76rem;font-weight:700;padding:5px 10px;border-radius:99px;background:rgba(255,255,255,0.08);border:1px solid var(--border);color:var(--text);cursor:pointer;">📱 配對平板</button>
             <a class="child-link ${pageCls}" href="${childPageHref(child.id)}">平板專屬頁 →</a>
           </div>
         </div>
@@ -1064,7 +1078,7 @@ async function load() {
         </div>
         <div class="progress"><i style="width:${pct}%"></i></div>
         <div class="actions" style="margin:0 0 10px">
-          <button class="ok btnChildClear" type="button">✨ 複製「${child.zh}清了」</button>
+          <button class="ok btnChildClear" type="button">✨ 複製「${escapeHtml(child.zh)}清了」</button>
         </div>`;
       card.querySelector('.btnPairQr')?.addEventListener('click', () => {
         openPairModal(child.id);
@@ -1117,7 +1131,7 @@ async function load() {
       app.appendChild(card);
     }
   } catch (e) {
-    app.innerHTML = `<div class="card">讀不到 status.json：${e.message}</div>`;
+    app.innerHTML = `<div class="card">讀不到 status.json：${escapeHtml(e.message)}</div>`;
     document.getElementById('calendar-root').innerHTML = `<div class="sub">載入失敗</div>`;
     document.getElementById('gantt-root').innerHTML = `<div class="sub">載入失敗</div>`;
   }
@@ -1136,6 +1150,11 @@ document.getElementById('btnCopyAll').addEventListener('click', async () => {
       }
       for (const it of [...(child.due_soon || [])]) {
         if (!store[itemKey(child.id, 'due_soon', it)]) open.push(it.title);
+      }
+      if (!open.length && (child.tests_this_week || []).length) {
+        for (const it of [...(child.tests_this_week || [])]) {
+          if (!store[itemKey(child.id, 'tests_this_week', it)]) open.push(it.title);
+        }
       }
       lines.push(child.zh + (open.length ? '未清：' + open.join('；') : '無今日項'));
     }

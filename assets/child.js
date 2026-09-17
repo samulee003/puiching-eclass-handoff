@@ -34,6 +34,16 @@
     ['other', '其他', '📚']
   ];
 
+  function escapeHtml(str) {
+    if (str == null) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
   function loadStore() {
     try { return JSON.parse(localStorage.getItem(STORE_KEY) || '{}'); }
     catch (e) { return {}; }
@@ -276,8 +286,8 @@
       lanes +=
         '<div class="tl-lane">' +
           '<div class="tl-lanelabel">' +
-            '<span>' + subjectEmoji(r.it.subject) + ' ' + shortTitle(r.it) + '</span>' +
-            '<span class="tl-when">' + chip.text + '</span>' +
+            '<span>' + subjectEmoji(r.it.subject) + ' ' + escapeHtml(shortTitle(r.it)) + '</span>' +
+            '<span class="tl-when">' + escapeHtml(chip.text) + '</span>' +
           '</div>' +
           '<div class="tl-track"><div class="tl-bar ' + cls + '" style="left:' + left + '%;width:' + width + '%"></div></div>' +
         '</div>';
@@ -345,8 +355,9 @@
     var deducted = 0;
     if (s.awarded[key]) {
       delete s.awarded[key];
-      s.earned = Math.max(s.spent, s.earned - cfg.perTask);
-      deducted += cfg.perTask;
+      var oldEarned = s.earned;
+      s.earned = Math.max(0, s.earned - cfg.perTask);
+      deducted += (oldEarned - s.earned);
     }
     // If daily bonus was awarded for today, check if all today's items are still done
     var todayIso = todayMacau();
@@ -358,8 +369,9 @@
       });
       if (!allTodayDone) {
         delete s.bonusDates[todayIso];
-        s.earned = Math.max(s.spent, s.earned - cfg.bonus);
-        deducted += cfg.bonus;
+        var oldBonus = s.earned;
+        s.earned = Math.max(0, s.earned - cfg.bonus);
+        deducted += (oldBonus - s.earned);
       }
     }
     writePointsState(s);
@@ -379,7 +391,7 @@
         var k = itemKey(child.id, pair[0], it);
         if (s.awarded[k] && !store[k]) {
           delete s.awarded[k];
-          s.earned = Math.max(s.spent, s.earned - cfg.perTask);
+          s.earned = Math.max(0, s.earned - cfg.perTask);
           changed = true;
         }
       });
@@ -392,7 +404,7 @@
       });
       if (!allTodayDone) {
         delete s.bonusDates[todayIso];
-        s.earned = Math.max(s.spent, s.earned - cfg.bonus);
+        s.earned = Math.max(0, s.earned - cfg.bonus);
         changed = true;
       }
     }
@@ -414,10 +426,10 @@
       var owned = s.redemptions.filter(function (r) { return r.id === item.id; }).length;
       return '' +
         '<div class="shop-item' + (affordable ? '' : ' locked') + '">' +
-          '<div class="shop-emoji">' + (item.emoji || '🎁') + '</div>' +
-          '<div class="shop-name">' + item.name + '</div>' +
+          '<div class="shop-emoji">' + escapeHtml(item.emoji || '🎁') + '</div>' +
+          '<div class="shop-name">' + escapeHtml(item.name) + '</div>' +
           '<div class="shop-cost">⭐ ' + item.cost + ' 分' + (owned ? ' · 已換 ' + owned : '') + '</div>' +
-          '<button type="button" class="shop-btn" data-reward="' + item.id + '"' +
+          '<button type="button" class="shop-btn" data-reward="' + escapeHtml(item.id) + '"' +
             (affordable ? '' : ' disabled') + '>' +
             (affordable ? '兌換' : '還差 ' + (item.cost - bal)) +
           '</button>' +
@@ -552,16 +564,16 @@
 
     var chip = dueChip(it.due, today);
     var submit = it.submit_required ? '<span class="chip submit">要交</span>' : '';
-    var detail = it.detail ? '<div class="t-detail">' + it.detail + '</div>' : '';
-    var note = it.note && it.note !== '置頂' ? '<span class="chip due-later">' + it.note + '</span>' : '';
-    var progress = it.progress ? '<span class="chip due-later">' + it.progress + '</span>' : '';
+    var detail = it.detail ? '<div class="t-detail">' + escapeHtml(it.detail) + '</div>' : '';
+    var note = it.note && it.note !== '置頂' ? '<span class="chip due-later">' + escapeHtml(it.note) + '</span>' : '';
+    var progress = it.progress ? '<span class="chip due-later">' + escapeHtml(it.progress) + '</span>' : '';
 
     li.innerHTML =
       '<span class="check" aria-hidden="true">✓</span>' +
       '<div>' +
-        '<div class="t-title">' + subjectEmoji(it.subject) + ' ' + (it.title || '') + '</div>' +
+        '<div class="t-title">' + subjectEmoji(it.subject) + ' ' + escapeHtml(it.title || '') + '</div>' +
         '<div class="t-meta">' +
-          '<span class="chip ' + chip.cls + '">' + chip.text + '</span>' +
+          '<span class="chip ' + chip.cls + '">' + escapeHtml(chip.text) + '</span>' +
           submit + note + progress +
         '</div>' + detail +
       '</div>';
@@ -673,6 +685,11 @@
       (child.due_soon || []).forEach(function (it) {
         if (!store[itemKey(child.id, 'due_soon', it)]) open.push(it.title);
       });
+      if (!open.length && (child.tests_this_week || []).length) {
+        (child.tests_this_week || []).forEach(function (it) {
+          if (!store[itemKey(child.id, 'tests_this_week', it)]) open.push(it.title);
+        });
+      }
       toast('還差 ' + open.length + ' 樣：' + open.slice(0, 3).join('、') + (open.length > 3 ? '…' : ''));
     }
   }
@@ -684,7 +701,14 @@
   }
   function fallbackCopy(text) {
     var ta = document.createElement('textarea');
-    ta.value = text; document.body.appendChild(ta); ta.select();
+    ta.value = text;
+    ta.setAttribute('readonly', '');
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    ta.style.left = '-9999px';
+    document.body.appendChild(ta);
+    ta.select();
+    try { ta.setSelectionRange(0, 99999); } catch (e) {}
     try { document.execCommand('copy'); } catch (e) {}
     document.body.removeChild(ta);
   }
@@ -702,7 +726,7 @@
         var child = (data.children || []).filter(function (c) { return c.id === CHILD_ID; })[0];
         if (!child) {
           document.getElementById('sections').innerHTML =
-            '<div class="empty">找不到這位小朋友的資料（' + CHILD_ID + '）</div>';
+            '<div class="empty">找不到這位小朋友的資料（' + escapeHtml(CHILD_ID) + '）</div>';
           return;
         }
         document.title = child.zh + '的功課';
@@ -746,7 +770,7 @@
       })
       .catch(function (e) {
         document.getElementById('sections').innerHTML =
-          '<div class="empty">讀不到功課資料 😢（' + e.message + '）</div>';
+          '<div class="empty">讀不到功課資料 😢（' + escapeHtml(e.message) + '）</div>';
       })
       .then(function () {
         var btn = document.getElementById('btnRefreshData');
@@ -787,12 +811,7 @@
     modal.querySelector('#childModalConnectBtn').onclick = function () {
       var val = (input.value || '').toUpperCase().replace(/[\s-]/g, '');
       if (val.length !== 20) {
-        var toastEl = document.getElementById('toast');
-        if (toastEl) {
-          toastEl.textContent = '⚠️ 請輸入完整的 20 位家庭同步碼！';
-          toastEl.classList.add('show');
-          setTimeout(function () { toastEl.classList.remove('show'); }, 3000);
-        }
+        toast('⚠️ 請輸入完整的 20 位家庭同步碼！');
         return;
       }
       if (window.PuichingSync && window.PuichingSync.connect) {
@@ -800,12 +819,7 @@
         window.PuichingSync.connect(val, false).then(function (ok) {
           if (ok) {
             modal.style.display = 'none';
-            var toastEl = document.getElementById('toast');
-            if (toastEl) {
-              toastEl.textContent = '🎉 成功連接家庭同步空間！';
-              toastEl.classList.add('show');
-              setTimeout(function () { toastEl.classList.remove('show'); }, 3000);
-            }
+            toast('🎉 成功連接家庭同步空間！');
           } else {
             modal.querySelector('#childModalStateText').textContent = '⚠️ 連線失敗，請檢查代碼或網路。';
           }
@@ -816,7 +830,15 @@
     modal.querySelector('#childModalRetryBtn').onclick = function () {
       var val = (localStorage.getItem('puiching-eclass-sync-code-v1') || input.value || '').toUpperCase().replace(/[\s-]/g, '');
       if (val && window.PuichingSync && window.PuichingSync.connect) {
-        window.PuichingSync.connect(val, false);
+        modal.querySelector('#childModalStateText').textContent = '正在連線中… ☁️';
+        window.PuichingSync.connect(val, false).then(function (ok) {
+          if (ok) {
+            modal.style.display = 'none';
+            toast('🎉 成功連接家庭同步空間！');
+          } else {
+            modal.querySelector('#childModalStateText').textContent = '⚠️ 連線失敗，請檢查代碼或網路。';
+          }
+        });
       }
     };
   }

@@ -233,6 +233,35 @@ class TestTier4ScenarioRewardRedemption(unittest.TestCase):
         points_record["earned"] = max(points_record["spent"], points_record["earned"] - bonus_pts)
         self.assertEqual(points_record["earned"], 10)  # only t-2 remains
 
+    def test_cannot_exploit_infinite_points_after_spending(self):
+        """Unchecking tasks after points are spent decrements earned correctly without point duplication."""
+        pts_per_task = 10
+        points_record = {
+            "earned": 50,
+            "spent": 50,  # e.g. Redeemed gummy snack (50 points)
+            "awarded": {f"task-{i}": True for i in range(5)},
+            "bonusDates": {},
+            "redemptions": [{"id": "gummy", "cost": 50}]
+        }
+        # Balance is max(0, earned - spent) = 0
+        self.assertEqual(max(0, points_record["earned"] - points_record["spent"]), 0)
+
+        # Child unchecks task-0
+        del points_record["awarded"]["task-0"]
+        points_record["earned"] = max(0, points_record["earned"] - pts_per_task)
+        self.assertEqual(points_record["earned"], 40)
+        # Display balance is 0 (never negative)
+        self.assertEqual(max(0, points_record["earned"] - points_record["spent"]), 0)
+
+        # Child checks task-0 again
+        if not points_record["awarded"].get("task-0"):
+            points_record["awarded"]["task-0"] = True
+            points_record["earned"] += pts_per_task
+
+        # Earned is back to 50, spent is 50, balance is 0 — zero free points generated
+        self.assertEqual(points_record["earned"], 50)
+        self.assertEqual(max(0, points_record["earned"] - points_record["spent"]), 0)
+
 
 if __name__ == "__main__":
     unittest.main()

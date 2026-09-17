@@ -54,6 +54,16 @@ CHILD_ID_MAPPING = {
 }
 
 
+def get_macau_today() -> datetime.date:
+    """Return today's date in Asia/Macau (UTC+8)."""
+    try:
+        from zoneinfo import ZoneInfo
+        return datetime.datetime.now(ZoneInfo("Asia/Macau")).date()
+    except Exception:
+        tz_macau = datetime.timezone(datetime.timedelta(hours=8))
+        return datetime.datetime.now(tz_macau).date()
+
+
 def normalize_child_id(child_id: str) -> str:
     """Normalize input child ID alias to standard canonical ID."""
     norm = child_id.strip().lower().replace("_", "-")
@@ -240,6 +250,7 @@ def update_dashboard_markdown(
     dashboard_text: str,
     target_child_id: str,
     target_child_data: Dict[str, Any],
+    today_date: Optional[datetime.date] = None,
 ) -> str:
     """Replace target child's section in DASHBOARD.md while preserving other sections."""
     norm_id = normalize_child_id(target_child_id)
@@ -253,8 +264,8 @@ def update_dashboard_markdown(
     header_block = parts[0] if parts else ""
     sections_blocks = parts[1:] if len(parts) > 1 else []
 
-    # Update date line in header if present
-    today_iso = datetime.date.today().isoformat()
+    # Update date line in header if present using Macau date
+    today_iso = (today_date or get_macau_today()).isoformat()
     header_block = re.sub(
         r"最後更新：\d{4}-\d{2}-\d{2}[^\n]*",
         f"最後更新：{today_iso}（系統更新{target_zh}區塊）",
@@ -291,6 +302,11 @@ def update_dashboard_markdown(
                 r"\|\s*(\d{4}-\d{2}-\d{2})\s*\|",
                 r"| \1（今日） |",
                 block,
+            )
+            sanitized_loop = re.sub(
+                rf"(\|\s*{re.escape(target_zh)}\s*\|\s*)\d{{4}}-\d{{2}}-\d{{2}}(?:（今日）)?(\s*\|)",
+                rf"\g<1>{today_iso}（今日）\g<2>",
+                sanitized_loop,
             )
             new_section_blocks.append(sanitized_loop.strip() + "\n\n")
         else:
@@ -421,6 +437,9 @@ def update_child_status(
     else:
         now_utc = now_utc.astimezone(datetime.timezone.utc)
 
+    tz_macau = datetime.timezone(datetime.timedelta(hours=8))
+    today_macau = now_utc.astimezone(tz_macau).date()
+
     status_data["updated_at"] = now_utc.strftime("%Y-%m-%dT%H:%M:%SZ")
 
     # 6. Atomic write to status.json
@@ -446,6 +465,7 @@ def update_child_status(
         old_dashboard_text,
         norm_child_id,
         target_child,
+        today_date=today_macau,
     )
     atomic_write_text(dashboard_file, updated_dashboard_text)
 
@@ -559,7 +579,7 @@ def main() -> int:
             status_path=args.status_json,
             dashboard_path=args.dashboard_md,
             validate=not args.no_validate,
-            scrape=bool(args.scrape),
+            scrape=bool(args.scrape or args.fixture),
         )
         print(
             f"Successfully updated {child_id} in {args.status_json} and {args.dashboard_md} with compliance validation."

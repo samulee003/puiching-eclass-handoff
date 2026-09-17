@@ -110,14 +110,14 @@ def canonicalize_date(date_str: str, default_year: Optional[int] = None) -> str:
     if any(k in date_str for k in ("後天", "后天")):
         return (today + datetime.timedelta(days=2)).isoformat()
 
-    # 1. Match YYYY-MM-DD or YYYY/MM/DD
-    m1 = re.search(r"(\d{4})[/-](\d{1,2})[/-](\d{1,2})", date_str)
+    # 1. Match YYYY-MM-DD, YYYY/MM/DD, or YYYY.MM.DD
+    m1 = re.search(r"(\d{4})[/\-.](\d{1,2})[/\-.](\d{1,2})", date_str)
     if m1:
         y, m, d = int(m1.group(1)), int(m1.group(2)), int(m1.group(3))
         return datetime.date(y, m, d).isoformat()
 
-    # 2. Match DD/MM/YYYY or DD-MM-YYYY (4-digit year at end)
-    m2 = re.search(r"(\d{1,2})[/-](\d{1,2})[/-](\d{4})", date_str)
+    # 2. Match DD/MM/YYYY, DD-MM-YYYY, or DD.MM.YYYY (4-digit year at end)
+    m2 = re.search(r"(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{4})", date_str)
     if m2:
         d, m, y = int(m2.group(1)), int(m2.group(2)), int(m2.group(3))
         return datetime.date(y, m, d).isoformat()
@@ -134,12 +134,28 @@ def canonicalize_date(date_str: str, default_year: Optional[int] = None) -> str:
         m, d = int(m4.group(1)), int(m4.group(2))
         return datetime.date(default_year, m, d).isoformat()
 
-    # 5. Match MM/DD or MM-DD (e.g. 09/16, 9/16, 09-16)
-    m5 = re.search(r"(?:^|[^\d])(\d{1,2})[/-](\d{1,2})(?:$|[^\d])", date_str)
+    # 5. Match MM/DD or DD/MM (e.g. 09/16, 9/16, 9/5, 17/9, 17/09, 17.9)
+    m5 = re.search(r"(?:^|[^\d])(\d{1,2})[/\-.](\d{1,2})(?:$|[^\d])", date_str)
     if m5:
         p1, p2 = int(m5.group(1)), int(m5.group(2))
+        # If p1 > 12 and valid day, it must be DD/MM (e.g. 17/9, 23/9)
+        if p1 > 12 and 1 <= p2 <= 12 and 1 <= p1 <= 31:
+            try:
+                return datetime.date(default_year, p2, p1).isoformat()
+            except ValueError:
+                pass
+        # Standard MM/DD (e.g. 09/16, 9/5, 12/3)
         if 1 <= p1 <= 12 and 1 <= p2 <= 31:
-            return datetime.date(default_year, p1, p2).isoformat()
+            try:
+                return datetime.date(default_year, p1, p2).isoformat()
+            except ValueError:
+                pass
+        # Fallback DD/MM if p2 <= 12 and p1 <= 31
+        if 1 <= p2 <= 12 and 1 <= p1 <= 31:
+            try:
+                return datetime.date(default_year, p2, p1).isoformat()
+            except ValueError:
+                pass
 
     raise ValueError(f"Unable to parse date string: {date_str!r}")
 
@@ -473,8 +489,8 @@ def parse_homework_table_rows(tables: List[List[Dict[str, Any]]]) -> List[Dict[s
                             pass
 
             subject = item_data.get("subject", "").strip()
-            # Strip grade/class prefixes like 'P3B 中文' -> '中文', 'P1E 英文' -> '英文'
-            subject = re.sub(r"^P\d[A-Z]?\s*", "", subject).strip()
+            # Strip grade/class prefixes like 'P3B 中文' -> '中文', 'P.3 中文' -> '中文', 'P1E 英文' -> '英文'
+            subject = re.sub(r"^P\.?\d[A-Z\-]?\s*", "", subject).strip()
             title = item_data.get("title", "").strip()
             due_raw = item_data.get("due", "").strip()
 
@@ -496,7 +512,7 @@ def parse_homework_table_rows(tables: List[List[Dict[str, Any]]]) -> List[Dict[s
 
             if any(k in combined_desc for k in ("不須", "不用", "免交", "不需要", "不用默寫", "不用交", "不需繳交", "免繳交")):
                 submit_required = False
-            elif any(k in submit_str for k in ("不須", "不用", "免交", "不需要", "no")):
+            elif any(k in submit_str for k in ("不須", "不用", "免交", "不需要", "不需", "no")):
                 submit_required = False
             elif any(k in submit_str for k in ("須繳交", "要交", "需要", "yes", "必須")):
                 submit_required = True
