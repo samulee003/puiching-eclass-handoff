@@ -873,6 +873,16 @@ class EClassScraper:
                     table_count = len(re.findall(r"<table", body, re.I))
                     print(f"DEBUG [{self.child_id}]: Table tags count: {table_count}")
 
+                    # Diagnostic probe for viewHmeworkDetail function and items
+                    vh_matches = re.findall(r"function\s+viewH[a-zA-Z0-9_]*\s*\([^)]*\)\s*\{[^}]{1,500}\}", body, re.I)
+                    print(f"DEBUG [{self.child_id}]: Found viewHomework functions: {vh_matches}")
+
+                    for probe in ("默字一", "隨堂認讀生詞評估", "單元評估", "常識生詞"):
+                        idx = body.find(probe)
+                        if idx != -1:
+                            snippet = body[max(0, idx - 100): min(len(body), idx + 400)]
+                            print(f"DEBUG [{self.child_id}] SNIPPET for '{probe}':\n{snippet}\n---END---")
+
 
 
                     # Check for frames/iframes
