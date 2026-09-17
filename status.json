@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "updated_at": "2026-09-17T10:06:01Z",
+  "updated_at": "2026-09-17T12:16:34Z",
   "timezone": "Asia/Macau",
   "repo": "https://github.com/samulee003/puiching-eclass-handoff",
   "rules": {
@@ -29,6 +29,13 @@
           "title": "Mr. Kelvin. :課內已完成習作7",
           "due": "2026-09-17",
           "submit_required": true
+        },
+        {
+          "subject": "數學",
+          "title": "梁：預習8（PL2）",
+          "due": "2026-09-17",
+          "submit_required": true,
+          "detail": "梁：預習第8課的PowerLesson2的課前部分，並完成練習。"
         },
         {
           "subject": "英文",

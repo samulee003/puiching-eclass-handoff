@@ -11,6 +11,7 @@
 |---|---|---|---|---|
 | 中文 | 默書温習紙 | 2026-09-17 | 須繳交 | 內容未提供 | <!-- 默書温習紙 -->
 | 數學 | Mr. Kelvin. :課內已完成習作7 | 2026-09-17 | 須繳交 | 內容未提供 | <!-- Mr.Kel -->
+| 數學 | 梁：預習8（PL2） | 2026-09-17 | 須繳交 | 梁：預習第8課的PowerLesson2的課前部分，並完成練習。 | <!-- 梁：預習8P -->
 | 英文 | (Miss Valentina) Do U.2 Sentence making (farm, city, special, dangerous, window) | 2026-09-17 | 須繳交 | 內容未提供 | <!-- MissVa -->
 | 英文 | (Ms. Au Ieog) 1. Quiz tomorrow // 2. S.C. on Mon // 3. Finish KWHD worksheet | 2026-09-17 | 須繳交 | 詳情未取到 | <!-- Ms.AuI -->
 | 英文 | Quiz 1 on 17/9 (Thur) | 2026-09-17 | 須繳交 | Syllabus: 1. Present Simple Tense, Present Continuous Tense & Past Tense (Worksheet 1,2&3) 2. Reading Comprehension | <!-- Quiz1o -->
@@ -68,5 +69,5 @@
 ## 閉環
 | 孩子 | 日期 | 主公回「清了」？ |
 |---|---|---|
-| 李悅 | 2026-09-16（今日） | 待回 |
-| 李昕 | 2026-09-16（今日） | 待回 |
+| 李悅 | 2026-09-17（今日） | 待回 |
+| 李昕 | 2026-09-17（今日） | 待回 |
