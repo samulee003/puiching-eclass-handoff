@@ -873,18 +873,6 @@ class EClassScraper:
                     table_count = len(re.findall(r"<table", body, re.I))
                     print(f"DEBUG [{self.child_id}]: Table tags count: {table_count}")
 
-                    # Diagnostic probe for viewHmeworkDetail function and items
-                    vh_matches = re.findall(r"function\s+viewH[a-zA-Z0-9_]*\s*\([^)]*\)\s*\{[^}]{1,500}\}", body, re.I)
-                    print(f"DEBUG [{self.child_id}]: Found viewHomework functions: {vh_matches}")
-
-                    for probe in ("默字一", "隨堂認讀生詞評估", "單元評估", "常識生詞"):
-                        idx = body.find(probe)
-                        if idx != -1:
-                            snippet = body[max(0, idx - 100): min(len(body), idx + 400)]
-                            print(f"DEBUG [{self.child_id}] SNIPPET for '{probe}':\n{snippet}\n---END---")
-
-
-
                     # Check for frames/iframes
                     frames = re.findall(r'<i?frame[^>]+src=["\']([^"\']+)["\']', body, re.I)
                     if frames:
@@ -916,23 +904,6 @@ class EClassScraper:
         """Perform full scrape workflow: login -> fetch -> parse -> filter -> categorize."""
         self.login()
         html_page = self.fetch_homework_page()
-
-        # Probe view.php for children
-        cid_m = re.search(r"childrenID=(\d+)", html_page)
-        cid = cid_m.group(1) if cid_m else None
-        hids = re.findall(r"viewHmeworkDetail\((\d+)\)", html_page)
-        print(f"DEBUG [{self.child_id}]: childrenID={cid}, found {len(hids)} hids: {hids[:5]}")
-        for test_hid in hids:
-            try:
-                view_url = f"https://eclass.puiching.edu.mo/home/eService/homework/management/homeworklist/view.php?hid={test_hid}&childrenID={cid}"
-                v_req = urllib.request.Request(view_url, method="GET")
-                with self.opener.open(v_req, timeout=10) as v_resp:
-                    v_body = v_resp.read().decode("utf-8", errors="replace")
-                    clean_text = " ".join(re.sub(r"<[^>]+>", " ", v_body).split())
-                    print(f"DEBUG [{self.child_id}] view.php hid={test_hid}: {clean_text[:500]}")
-            except Exception as ex:
-                print(f"DEBUG [{self.child_id}] view.php error for {test_hid}: {ex}")
-
         return parse_homework_html(html_page, self.child_id, today)
 
 
