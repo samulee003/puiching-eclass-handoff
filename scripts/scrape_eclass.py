@@ -831,14 +831,19 @@ class EClassScraper:
                     table_count = len(re.findall(r"<table", body, re.I))
                     print(f"DEBUG [{self.child_id}]: Table tags count: {table_count}")
 
-                    # Diagnostic: Print the table containing 學科組別
-                    m_table = re.search(r'(<table[^>]*>[\s\S]*?學科組別[\s\S]*?</table>)', body)
-                    if m_table:
-                        raw_tbl = m_table.group(1)
-                        print(f"DEBUG [{self.child_id}]: Matched table len={len(raw_tbl)}")
-                        # Print sample of rows from the matched table
-                        for row_match in re.findall(r'<tr[^>]*>[\s\S]*?</tr>', raw_tbl)[:10]:
-                            print(f"DEBUG [{self.child_id}] RAW TR: {row_match[:300]}")
+                    # Diagnostic: Print HTML around known items
+                    for probe in ("第七周隨堂進行第一段口試", "Quiz 1 on 17/9"):
+                        idx = body.find(probe)
+                        if idx != -1:
+                            snippet = body[max(0, idx - 150): min(len(body), idx + 1000)]
+                            print(f"DEBUG [{self.child_id}] SNIPPET for '{probe}':\n{snippet}\n---END SNIPPET---")
+                        else:
+                            print(f"DEBUG [{self.child_id}] Probe '{probe}' NOT FOUND in body!")
+
+                    print(f"DEBUG [{self.child_id}] Contains '愛國愛澳'? {'愛國愛澳' in body}")
+                    print(f"DEBUG [{self.child_id}] Contains 'Syllabus'? {'Syllabus' in body}")
+                    print(f"DEBUG [{self.child_id}] Contains '水的探究'? {'水的探究' in body}")
+                    print(f"DEBUG [{self.child_id}] Contains '全完成20張閱讀卡'? {'全完成20張閱讀卡' in body}")
 
                     # Check for frames/iframes
                     frames = re.findall(r'<i?frame[^>]+src=["\']([^"\']+)["\']', body, re.I)
