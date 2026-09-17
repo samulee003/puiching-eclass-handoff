@@ -56,7 +56,11 @@
     3. 修復平板端同步彈窗 Toast 隱形問題與重試按鈕反饋。
     4. 修正 `DASHBOARD.md` 閉環區塊日期推進邏輯，避免跨孩子污染與八進制跳脫衝突。
     5. 強化前端 `escapeHtml` XSS 轉義防護，統一快取版號至 `v=20260917-06`。
-  - 全套自動化回歸測試擴充至 212/212 測試全數通過（100% Pass）。
+  - 平板載入與伺服器錯誤防護強化（v=20260917-07）：
+    1. 實測確認 GitHub Pages 與 Firebase Realtime Database 連線 100% 正常（雙孩頁面無錯誤完整渲染）。
+    2. 分析平板「Server Error」主因為 GitHub Actions 自動定時推送爬蟲時觸發之 GitHub Pages 30~60 秒邊界切換暫態，搭配 iPad Safari 強快取所致。
+    3. `child.js` 與 `index.html` 全面防禦：`status.json` fetch 補齊 `!r.ok` 檢查與親切重試按鈕，`localStorage` 寫入全面以 `try...catch` 包裹防護 iPad 私密瀏覽與配額邊界異常，版號全面更新為 `v=20260917-07`。
+  - 全套自動化回歸測試 212/212 測試全數通過（100% Pass）。
 
 ## 決策與紅線
 

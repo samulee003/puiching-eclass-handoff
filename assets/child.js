@@ -49,7 +49,7 @@
     catch (e) { return {}; }
   }
   function saveStore(s) {
-    localStorage.setItem(STORE_KEY, JSON.stringify(s));
+    try { localStorage.setItem(STORE_KEY, JSON.stringify(s)); } catch (e) {}
     try { window.PuichingSync && window.PuichingSync.replaceTodos(s); } catch (e) {}
   }
 
@@ -61,7 +61,7 @@
     catch (e) { return {}; }
   }
   function savePoints(p) {
-    localStorage.setItem(POINTS_KEY, JSON.stringify(p));
+    try { localStorage.setItem(POINTS_KEY, JSON.stringify(p)); } catch (e) {}
     try { window.PuichingSync && window.PuichingSync.replacePoints(p); } catch (e) {}
   }
 
@@ -720,7 +720,12 @@
     if (btn) btn.classList.add('spinning');
 
     fetch('status.json?ts=' + Date.now(), { cache: 'no-store' })
-      .then(function (r) { return r.json(); })
+      .then(function (r) {
+        if (!r.ok) {
+          throw new Error('伺服器回應 ' + r.status + '（' + (r.statusText || '請重試') + '）');
+        }
+        return r.json();
+      })
       .then(function (data) {
         DATA = data;
         var child = (data.children || []).filter(function (c) { return c.id === CHILD_ID; })[0];
@@ -770,7 +775,16 @@
       })
       .catch(function (e) {
         document.getElementById('sections').innerHTML =
-          '<div class="empty">讀不到功課資料 😢（' + escapeHtml(e.message) + '）</div>';
+          '<div class="empty" style="text-align:center;padding:32px 16px;">' +
+            '<div style="font-size:2rem;margin-bottom:8px;">⚠️</div>' +
+            '<div style="font-weight:700;font-size:1.1rem;margin-bottom:6px;">暫時無法載入功課資料</div>' +
+            '<div style="font-size:0.85rem;color:var(--muted);margin-bottom:16px;">（' + escapeHtml(e.message) + '）</div>' +
+            '<button type="button" id="btnRetryLoad" style="padding:8px 20px;border-radius:99px;background:var(--accent);color:#fff;border:none;font-weight:700;font-size:0.9rem;cursor:pointer;">重新整理 🔄</button>' +
+          '</div>';
+        var retryBtn = document.getElementById('btnRetryLoad');
+        if (retryBtn) {
+          retryBtn.onclick = function () { load(true); };
+        }
       })
       .then(function () {
         var btn = document.getElementById('btnRefreshData');

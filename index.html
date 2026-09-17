@@ -584,9 +584,9 @@
       </div>
     </div>
   </div>
-<script src="sync-config.js?v=20260917-06"></script>
-<script src="assets/qrcode.min.js?v=20260917-06"></script>
-<script src="sync.js?v=20260917-06"></script>
+<script src="sync-config.js?v=20260917-07"></script>
+<script src="assets/qrcode.min.js?v=20260917-07"></script>
+<script src="sync.js?v=20260917-07"></script>
 <script>
 const STORE_KEY = 'puiching-eclass-todos-v1';
 const POINTS_KEY = 'puiching-eclass-points-v1';
@@ -597,14 +597,14 @@ function loadStore() {
   try { return JSON.parse(localStorage.getItem(STORE_KEY) || '{}'); } catch { return {}; }
 }
 function saveStore(s) {
-  localStorage.setItem(STORE_KEY, JSON.stringify(s));
+  try { localStorage.setItem(STORE_KEY, JSON.stringify(s)); } catch {}
   try { window.PuichingSync && window.PuichingSync.replaceTodos(s); } catch {}
 }
 function loadPoints() {
   try { return JSON.parse(localStorage.getItem(POINTS_KEY) || '{}'); } catch { return {}; }
 }
 function savePoints(p) {
-  localStorage.setItem(POINTS_KEY, JSON.stringify(p));
+  try { localStorage.setItem(POINTS_KEY, JSON.stringify(p)); } catch {}
   try { window.PuichingSync && window.PuichingSync.replacePoints(p); } catch {}
 }
 function itemKey(childId, section, it) {
@@ -1041,6 +1041,7 @@ async function load() {
   const store = loadStore();
   try {
     const res = await fetch('status.json?ts=' + Date.now(), { cache: 'no-store' });
+    if (!res.ok) throw new Error(`伺服器回應 ${res.status}（${res.statusText || '請重試'}）`);
     const data = await res.json();
     window.__DATA = data;
     const openToday = (data.children || []).map(c => {
