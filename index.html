@@ -241,6 +241,18 @@
     font-weight: 700; font-size: 0.92rem; color: var(--text);
     line-height: 1.35; word-break: break-word;
   }
+  .item-detail {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: #94a3b8;
+    margin-top: 4px;
+    background: rgba(255, 255, 255, 0.04);
+    border-left: 2px solid #38bdf8;
+    padding: 4px 8px;
+    border-radius: 4px;
+    line-height: 1.4;
+    word-break: break-word;
+  }
   .row {
     color: var(--muted); font-size: 0.78rem; font-weight: 500;
     display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; align-items: center;
@@ -726,6 +738,7 @@ function renderItem(childId, section, it, store, onToggle) {
     <input type="checkbox" ${done ? 'checked' : ''} aria-label="完成" />
     <div>
       <div class="title">${it.subject} · ${it.title}</div>
+      ${it.detail ? `<div class="item-detail">${it.detail}</div>` : ''}
       <div class="row"><span>截止 ${it.due || '—'}</span>${must}${it.note ? `<span class="pill">${it.note}</span>` : ''}</div>
     </div>`;
   li.querySelector('input').addEventListener('change', (e) => onToggle(key, e.target.checked, li));

@@ -195,6 +195,19 @@ class SimpleDOMParser(HTMLParser):
                 self.in_detail = True
             elif "btn-detail" in cls:
                 self.in_btn = True
+        elif t == "img":
+            title_attr = html.unescape(attr_dict.get("title", "")).strip()
+            alt_attr = html.unescape(attr_dict.get("alt", "")).strip()
+            src_attr = attr_dict.get("src", "").lower()
+
+            if "attach" in src_attr or title_attr in ("附件", "attachment") or alt_attr in ("附件", "attachment"):
+                if self.cell_stack:
+                    self.cell_stack[-1]["has_attachment"] = True
+
+            candidate_text = title_attr if title_attr and title_attr not in ("附件", "attachment", "icon", "新", "下載", "view") else alt_attr
+            if candidate_text and candidate_text not in ("附件", "attachment", "icon", "新", "下載", "view"):
+                if self.cell_stack:
+                    self.cell_stack[-1]["detail_parts"].append(candidate_text)
         else:
             cls = attr_dict.get("class", "").lower()
             if "detail-content" in cls:
@@ -212,11 +225,20 @@ class SimpleDOMParser(HTMLParser):
         raw_text = " ".join(cell["text_parts"])
         clean_text = html.unescape(" ".join(raw_text.split())).strip()
         clean_note = html.unescape(" ".join(" ".join(cell["note_parts"]).split())).strip() or None
-        clean_detail = html.unescape(" ".join(" ".join(cell["detail_parts"]).split())).strip() or None
+
+        raw_detail_lines = []
+        for part in cell["detail_parts"]:
+            for line in part.splitlines():
+                cl = html.unescape(" ".join(line.split())).strip()
+                if cl:
+                    raw_detail_lines.append(cl)
+        clean_detail = " ".join(raw_detail_lines).strip() or None
+
         cell_data = {
             "text": clean_text,
             "note_text": clean_note,
             "detail": clean_detail,
+            "has_attachment": cell.get("has_attachment", False),
             "is_th": cell["is_th"],
             "attrs": cell["attrs"],
         }
@@ -416,8 +438,25 @@ def parse_homework_table_rows(tables: List[List[Dict[str, Any]]]) -> List[Dict[s
                         item_data["detail"] = cells[note_col]["detail"]
             if "detail" not in item_data or not item_data["detail"]:
                 detail_col = header_indices.get("detail", -1)
-                if 0 <= detail_col < len(cells):
+                if 0 <= detail_col < len(cells) and cells[detail_col].get("detail"):
                     item_data["detail"] = cells[detail_col].get("detail") or cells[detail_col]["text"]
+
+            # Also check title cell or any other cell for embedded detail (e.g. img[title] tooltips)
+            if "detail" not in item_data or not item_data["detail"]:
+                title_col = header_indices.get("title", -1)
+                if 0 <= title_col < len(cells) and cells[title_col].get("detail"):
+                    item_data["detail"] = cells[title_col]["detail"]
+                else:
+                    for c in cells:
+                        if c.get("detail"):
+                            item_data["detail"] = c["detail"]
+                            break
+
+            # If item has attachment and note doesn't mention it, record attachment
+            if any(c.get("has_attachment") for c in cells):
+                cur_note = item_data.get("note") or ""
+                if "附件" not in cur_note:
+                    item_data["note"] = f"{cur_note} 附件".strip() if cur_note else "附件"
 
             # Heuristic fallback if subject or due missing from standard column mapping
             if not item_data.get("subject") or not item_data.get("due"):
@@ -481,6 +520,9 @@ def parse_homework_table_rows(tables: List[List[Dict[str, Any]]]) -> List[Dict[s
                         break
 
             if detail and progress and detail.strip() in (progress, f"進度：{progress}", f"進度:{progress}"):
+                detail = None
+
+            if detail and detail.strip() == title.strip():
                 detail = None
 
             sig = (subject, title, due_iso)
@@ -831,19 +873,7 @@ class EClassScraper:
                     table_count = len(re.findall(r"<table", body, re.I))
                     print(f"DEBUG [{self.child_id}]: Table tags count: {table_count}")
 
-                    # Diagnostic: Print HTML around known items
-                    for probe in ("第七周隨堂進行第一段口試", "Quiz 1 on 17/9"):
-                        idx = body.find(probe)
-                        if idx != -1:
-                            snippet = body[max(0, idx - 150): min(len(body), idx + 1000)]
-                            print(f"DEBUG [{self.child_id}] SNIPPET for '{probe}':\n{snippet}\n---END SNIPPET---")
-                        else:
-                            print(f"DEBUG [{self.child_id}] Probe '{probe}' NOT FOUND in body!")
 
-                    print(f"DEBUG [{self.child_id}] Contains '愛國愛澳'? {'愛國愛澳' in body}")
-                    print(f"DEBUG [{self.child_id}] Contains 'Syllabus'? {'Syllabus' in body}")
-                    print(f"DEBUG [{self.child_id}] Contains '水的探究'? {'水的探究' in body}")
-                    print(f"DEBUG [{self.child_id}] Contains '全完成20張閱讀卡'? {'全完成20張閱讀卡' in body}")
 
                     # Check for frames/iframes
                     frames = re.findall(r'<i?frame[^>]+src=["\']([^"\']+)["\']', body, re.I)
