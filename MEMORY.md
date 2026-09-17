@@ -49,7 +49,8 @@
   - 成功解決功課詳情提取問題：eClass 將詳細要求/範圍藏於標題欄 `<img title="...">` 提示屬性中。增強 `SimpleDOMParser` 支援解析 `img[title]` 與 `img[alt]`，成功提取口試題目（愛國愛澳）、常識水之探究生詞（10個）、Quiz 1 範疇（時態+閱讀理解）、勤讀獎指引，並標註「附件」圖示。
   - 家長總覽頁 `index.html` 同步新增 `.item-detail` 樣式與渲染，家長可在總覽直接檢視詳細範圍與說明。
   - 實測確認 Mr. Kelvin 數學習作 7 隨教師發布後已自動入庫。
-  - GitHub Actions 即時抓取工作流（Run `35205907836`）運行成功，雙寫至 `status.json` 與 `DASHBOARD.md`，202/202 測試全數通過。
+  - 修正小孩看板積分漏洞：先前錯誤點擊完成後再取消未扣除積分。新增 `revokeForTask(child, key)` 與自動對齊函式 `reconcilePoints(child)`，取消勾選時即時扣回單項分與今日全清獎勵分，重新整理時自動校準清理先前誤點殘留之虛增積分。
+  - GitHub Actions 即時抓取工作流運行成功，雙寫至 `status.json` 與 `DASHBOARD.md`，203/203 測試全數通過。
 
 ## 決策與紅線
 
