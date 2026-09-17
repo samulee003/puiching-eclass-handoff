@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "updated_at": "2026-09-16T13:55:12Z",
+  "updated_at": "2026-09-17T08:47:46Z",
   "timezone": "Asia/Macau",
   "repo": "https://github.com/samulee003/puiching-eclass-handoff",
   "rules": {
@@ -19,46 +19,17 @@
       "owner": "grok-liubei",
       "due_today": [
         {
-          "subject": "數學",
-          "title": "呂：周四交習作6",
-          "due": "2026-09-16",
-          "submit_required": true
-        },
-        {
-          "subject": "數學",
-          "title": "梁：習作6",
-          "due": "2026-09-16",
-          "submit_required": true
-        },
-        {
-          "subject": "英文",
-          "title": "(Ms. Au Ieong) Do Wb. p.16",
-          "due": "2026-09-16",
-          "submit_required": true
-        },
-        {
-          "subject": "英文",
-          "title": "Quiz 1 tomorrow",
-          "due": "2026-09-16",
-          "submit_required": true,
-          "detail": "詳情未取到"
-        }
-      ],
-      "due_soon": [
-        {
-          "subject": "英文",
-          "title": "(Miss Valentina) Correct Spelling Challenge / S.C. on Monday (List 2)",
-          "due": "2026-09-20",
-          "submit_required": true
-        },
-        {
           "subject": "中文",
-          "title": "22/9(下周二)前背第三課2、3段",
-          "due": "2026-09-22",
+          "title": "默書温習紙",
+          "due": "2026-09-17",
           "submit_required": true
-        }
-      ],
-      "tests_this_week": [
+        },
+        {
+          "subject": "英文",
+          "title": "(Miss Valentina) Do U.2 Sentence making (farm, city, special, dangerous, window)",
+          "due": "2026-09-17",
+          "submit_required": true
+        },
         {
           "subject": "英文",
           "title": "(Ms. Au Ieog) 1. Quiz tomorrow // 2. S.C. on Mon // 3. Finish KWHD worksheet",
@@ -74,7 +45,48 @@
           "detail": "詳情未取到"
         }
       ],
+      "due_soon": [
+        {
+          "subject": "英文",
+          "title": "(Ms. Au Ieong) Do sentence making (Writing Journal)",
+          "due": "2026-09-18",
+          "submit_required": true
+        },
+        {
+          "subject": "英文",
+          "title": "(Miss Valentina) Correct Spelling Challenge / S.C. on Monday (List 2)",
+          "due": "2026-09-20",
+          "submit_required": true
+        },
+        {
+          "subject": "中文",
+          "title": "22/9(下周二)前背第三課2、3段",
+          "due": "2026-09-22",
+          "submit_required": true
+        },
+        {
+          "subject": "中文",
+          "title": "25/9(五)默書：第１、２課生字，背默第３課２、３段。",
+          "due": "2026-09-24",
+          "submit_required": true
+        }
+      ],
+      "tests_this_week": [
+        {
+          "subject": "英文",
+          "title": "24/9 Quiz 2: U.2 vocab 1-26 + Listening",
+          "due": "2026-09-24",
+          "submit_required": true,
+          "detail": "詳情未取到"
+        }
+      ],
       "other": [
+        {
+          "subject": "常識",
+          "title": "9月30日(三)默生詞(水的探究)",
+          "due": "2026-09-30",
+          "submit_required": true
+        },
         {
           "subject": "中文",
           "title": "第七周隨堂進行第一段口試",
@@ -112,15 +124,7 @@
       "zh": "李昕",
       "grade": "P1",
       "owner": "grok-zhangfei",
-      "due_today": [
-        {
-          "subject": "英文",
-          "title": "Quiz Listening on 16/9 (Wed)",
-          "due": "2026-09-16",
-          "submit_required": true,
-          "detail": "詳情未取到"
-        }
-      ],
+      "due_today": [],
       "due_soon": [
         {
           "subject": "中文",
@@ -142,6 +146,13 @@
           "title": "9月21至25日隨堂認讀生詞評估(不用默寫)--(第1課—我的身體)",
           "due": "2026-09-25",
           "submit_required": false,
+          "detail": "詳情未取到"
+        },
+        {
+          "subject": "數學",
+          "title": "9月25日(五) 單元評估(一)︰第1-3課書及習作",
+          "due": "2026-09-25",
+          "submit_required": true,
           "detail": "詳情未取到"
         },
         {
