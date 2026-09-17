@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "updated_at": "2026-09-17T08:47:46Z",
+  "updated_at": "2026-09-17T09:28:45Z",
   "timezone": "Asia/Macau",
   "repo": "https://github.com/samulee003/puiching-eclass-handoff",
   "rules": {
@@ -21,6 +21,12 @@
         {
           "subject": "中文",
           "title": "默書温習紙",
+          "due": "2026-09-17",
+          "submit_required": true
+        },
+        {
+          "subject": "數學",
+          "title": "Mr. Kelvin. :課內已完成習作7",
           "due": "2026-09-17",
           "submit_required": true
         },

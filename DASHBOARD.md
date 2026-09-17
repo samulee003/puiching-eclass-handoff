@@ -10,6 +10,7 @@
 | 科目 | 項目 | 截止 | 狀態 | 重點 |
 |---|---|---|---|---|
 | 中文 | 默書温習紙 | 2026-09-17 | 須繳交 | 內容未提供 | <!-- 默書温習紙 -->
+| 數學 | Mr. Kelvin. :課內已完成習作7 | 2026-09-17 | 須繳交 | 內容未提供 | <!-- Mr.Kel -->
 | 英文 | (Miss Valentina) Do U.2 Sentence making (farm, city, special, dangerous, window) | 2026-09-17 | 須繳交 | 內容未提供 | <!-- MissVa -->
 | 英文 | (Ms. Au Ieog) 1. Quiz tomorrow // 2. S.C. on Mon // 3. Finish KWHD worksheet | 2026-09-17 | 須繳交 | 詳情未取到 | <!-- Ms.AuI -->
 | 英文 | Quiz 1 on 17/9 (Thur) | 2026-09-17 | 須繳交 | 詳情未取到 | <!-- Quiz1o -->
