@@ -922,15 +922,14 @@ class EClassScraper:
         cid = cid_m.group(1) if cid_m else None
         hids = re.findall(r"viewHmeworkDetail\((\d+)\)", html_page)
         print(f"DEBUG [{self.child_id}]: childrenID={cid}, found {len(hids)} hids: {hids[:5]}")
-        for test_hid in hids[:3]:
+        for test_hid in hids:
             try:
                 view_url = f"https://eclass.puiching.edu.mo/home/eService/homework/management/homeworklist/view.php?hid={test_hid}&childrenID={cid}"
                 v_req = urllib.request.Request(view_url, method="GET")
                 with self.opener.open(v_req, timeout=10) as v_resp:
                     v_body = v_resp.read().decode("utf-8", errors="replace")
-                    print(f"DEBUG [{self.child_id}] view.php for hid={test_hid} (len {len(v_body)}):")
                     clean_text = " ".join(re.sub(r"<[^>]+>", " ", v_body).split())
-                    print(f"DEBUG [{self.child_id}] view.php TEXT: {clean_text[:400]}")
+                    print(f"DEBUG [{self.child_id}] view.php hid={test_hid}: {clean_text[:500]}")
             except Exception as ex:
                 print(f"DEBUG [{self.child_id}] view.php error for {test_hid}: {ex}")
 
