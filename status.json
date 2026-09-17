@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "updated_at": "2026-09-17T09:30:13Z",
+  "updated_at": "2026-09-17T09:35:31Z",
   "timezone": "Asia/Macau",
   "repo": "https://github.com/samulee003/puiching-eclass-handoff",
   "rules": {
@@ -48,7 +48,7 @@
           "title": "Quiz 1 on 17/9 (Thur)",
           "due": "2026-09-17",
           "submit_required": true,
-          "detail": "詳情未取到"
+          "detail": "Syllabus: 1. Present Simple Tense, Present Continuous Tense & Past Tense (Worksheet 1,2&3) 2. Reading Comprehension"
         }
       ],
       "due_soon": [
@@ -91,26 +91,31 @@
           "subject": "常識",
           "title": "9月30日(三)默生詞(水的探究)",
           "due": "2026-09-30",
-          "submit_required": true
+          "submit_required": true,
+          "note": "附件",
+          "detail": "1. 資源 2. 維持 3. 流動 4. 浮力 5. 煮食 6. 清潔 7. 廣泛 8. 灌溉 9. 養殖 10. 滅火"
         },
         {
           "subject": "中文",
           "title": "第七周隨堂進行第一段口試",
           "due": "2026-10-16",
           "submit_required": true,
-          "detail": "詳情未取到"
+          "detail": "主題﹕愛國愛澳 時間﹕三分鐘以內 語言﹕粵語/普通話 要求﹕可以選取繪本、改編或自創的故事"
         },
         {
           "subject": "中文",
           "title": "2026年度勤讀獎獲獎指標及閱讀卡",
           "due": "2027-05-07",
-          "submit_required": true
+          "submit_required": true,
+          "note": "附件",
+          "detail": "2026年中文勤讀獎﹕ 1.全年完成20張閱讀卡； 2.每周最多只可交2張閱讀卡； 3.閱讀卡可於課室領取或eClass下載； 4.上交閱讀卡的截止日期：2027年5月7日（五）"
         },
         {
           "subject": "英文",
           "title": "26/27 Primary General English Marking Scheme",
           "due": "2027-07-01",
-          "submit_required": true
+          "submit_required": true,
+          "note": "附件"
         },
         {
           "subject": "中文",
@@ -165,19 +170,22 @@
           "subject": "常識",
           "title": "「常識生詞」簿",
           "due": "2027-06-11",
-          "submit_required": true
+          "submit_required": true,
+          "detail": "為了鞏固學生對常識科的生詞加深印象，每一課題都會總結該課的主要生詞，然後張貼在「常識生詞」簿內，學生自行練寫。 相關評核要求: 第一段只需認讀不用默寫 第二段認讀及應用 第三段應用及默寫"
         },
         {
           "subject": "英文",
           "title": "26/27 General English Marking Scheme",
           "due": "2027-07-01",
-          "submit_required": true
+          "submit_required": true,
+          "note": "附件"
         },
         {
           "subject": "其他",
           "title": "2026任教小一正班各科導師的內線號碼資料",
           "due": "2027-07-02",
-          "submit_required": true
+          "submit_required": true,
+          "note": "附件"
         },
         {
           "subject": "常識",
