@@ -363,11 +363,14 @@ def parse_homework_table_rows(tables: List[List[Dict[str, Any]]]) -> List[Dict[s
                 }
 
         # Process data rows
-        for row_obj in data_rows:
+        for r_idx, row_obj in enumerate(data_rows):
             cells = row_obj.get("cells", [])
             row_attrs = row_obj.get("attrs", {})
             if not cells:
                 continue
+
+            if len(data_rows) > 5:
+                print(f"DEBUG ROW {r_idx} (len {len(cells)}): {[c.get('text', '') for c in cells]}")
 
             item_data: Dict[str, Any] = {}
 
@@ -437,11 +440,15 @@ def parse_homework_table_rows(tables: List[List[Dict[str, Any]]]) -> List[Dict[s
             due_raw = item_data.get("due", "").strip()
 
             if not subject or not title or not due_raw:
+                if len(data_rows) > 5:
+                    print(f"DEBUG ROW {r_idx} SKIPPED (missing required): subject={subject!r}, title={title!r}, due_raw={due_raw!r}")
                 continue
 
             try:
                 due_iso = canonicalize_date(due_raw)
-            except ValueError:
+            except ValueError as ve:
+                if len(data_rows) > 5:
+                    print(f"DEBUG ROW {r_idx} SKIPPED (invalid date {due_raw!r}): {ve}")
                 continue
 
             submit_str = item_data.get("submit_raw", "").strip()
@@ -823,6 +830,15 @@ class EClassScraper:
                     print(f"DEBUG [{self.child_id}]: Page title: {title_m.group(1) if title_m else 'No title'}")
                     table_count = len(re.findall(r"<table", body, re.I))
                     print(f"DEBUG [{self.child_id}]: Table tags count: {table_count}")
+
+                    # Diagnostic: Print the table containing 學科組別
+                    m_table = re.search(r'(<table[^>]*>[\s\S]*?學科組別[\s\S]*?</table>)', body)
+                    if m_table:
+                        raw_tbl = m_table.group(1)
+                        print(f"DEBUG [{self.child_id}]: Matched table len={len(raw_tbl)}")
+                        # Print sample of rows from the matched table
+                        for row_match in re.findall(r'<tr[^>]*>[\s\S]*?</tr>', raw_tbl)[:10]:
+                            print(f"DEBUG [{self.child_id}] RAW TR: {row_match[:300]}")
 
                     # Check for frames/iframes
                     frames = re.findall(r'<i?frame[^>]+src=["\']([^"\']+)["\']', body, re.I)
