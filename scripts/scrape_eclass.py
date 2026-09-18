@@ -32,8 +32,8 @@ import urllib.request
 from typing import Any, Dict, List, Optional, Tuple
 
 ECLASS_BASE_URL = "https://eclass.puiching.edu.mo/templates/"
-ECLASS_LOGIN_URL = "https://eclass.puiching.edu.mo/templates/login.php"
-ECLASS_HOMEWORK_URL = "https://eclass.puiching.edu.mo/templates/homework/index.php"
+ECLASS_LOGIN_URL = "https://eclass.puiching.edu.mo/login.php"
+ECLASS_HOMEWORK_URL = "https://eclass.puiching.edu.mo/home/eService/homework/index.php"
 
 STUDENT_MAPPING = {
     "li-yue": {"zh": "李悅", "en": "Abigail", "grade": "P3"},
@@ -95,187 +95,301 @@ def get_macau_today() -> datetime.date:
 def canonicalize_date(date_str: str, default_year: Optional[int] = None) -> str:
     """Normalize various date formats to YYYY-MM-DD."""
     date_str = date_str.strip()
-    # Match YYYY-MM-DD or YYYY/MM/DD
-    m1 = re.search(r"(\d{4})[/-](\d{1,2})[/-](\d{1,2})", date_str)
+    if not date_str:
+        raise ValueError("Empty date string")
+
+    today = get_macau_today()
+    if default_year is None:
+        default_year = today.year
+
+    # Check for relative keywords
+    if any(k in date_str for k in ("今日", "今天", "today")):
+        return today.isoformat()
+    if any(k in date_str for k in ("明日", "明天", "tomorrow")):
+        return (today + datetime.timedelta(days=1)).isoformat()
+    if any(k in date_str for k in ("後天", "后天")):
+        return (today + datetime.timedelta(days=2)).isoformat()
+
+    # 1. Match YYYY-MM-DD, YYYY/MM/DD, or YYYY.MM.DD
+    m1 = re.search(r"(\d{4})[/\-.](\d{1,2})[/\-.](\d{1,2})", date_str)
     if m1:
         y, m, d = int(m1.group(1)), int(m1.group(2)), int(m1.group(3))
         return datetime.date(y, m, d).isoformat()
 
-    # Match DD/MM/YYYY or DD-MM-YYYY
-    m2 = re.search(r"(\d{1,2})[/-](\d{1,2})[/-](\d{4})", date_str)
+    # 2. Match DD/MM/YYYY, DD-MM-YYYY, or DD.MM.YYYY (4-digit year at end)
+    m2 = re.search(r"(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{4})", date_str)
     if m2:
         d, m, y = int(m2.group(1)), int(m2.group(2)), int(m2.group(3))
         return datetime.date(y, m, d).isoformat()
 
-    # Match Chinese format with year: YYYY年M月D日
+    # 3. Match Chinese format with year: YYYY年M月D日
     m3 = re.search(r"(\d{4})年(\d{1,2})月(\d{1,2})日", date_str)
     if m3:
         y, m, d = int(m3.group(1)), int(m3.group(2)), int(m3.group(3))
         return datetime.date(y, m, d).isoformat()
 
-    # Match Chinese format without year: M月D日
-    m4 = re.search(r"^(\d{1,2})月(\d{1,2})日$", date_str)
+    # 4. Match Chinese format without year: M月D日 (allows trailing day-of-week like (三) or times)
+    m4 = re.search(r"(\d{1,2})月(\d{1,2})日", date_str)
     if m4:
-        y = default_year if default_year is not None else get_macau_today().year
         m, d = int(m4.group(1)), int(m4.group(2))
-        return datetime.date(y, m, d).isoformat()
+        return datetime.date(default_year, m, d).isoformat()
+
+    # 5. Match MM/DD or DD/MM (e.g. 09/16, 9/16, 9/5, 17/9, 17/09, 17.9)
+    m5 = re.search(r"(?:^|[^\d])(\d{1,2})[/\-.](\d{1,2})(?:$|[^\d])", date_str)
+    if m5:
+        p1, p2 = int(m5.group(1)), int(m5.group(2))
+        # If p1 > 12 and valid day, it must be DD/MM (e.g. 17/9, 23/9)
+        if p1 > 12 and 1 <= p2 <= 12 and 1 <= p1 <= 31:
+            try:
+                return datetime.date(default_year, p2, p1).isoformat()
+            except ValueError:
+                pass
+        # Standard MM/DD (e.g. 09/16, 9/5, 12/3)
+        if 1 <= p1 <= 12 and 1 <= p2 <= 31:
+            try:
+                return datetime.date(default_year, p1, p2).isoformat()
+            except ValueError:
+                pass
+        # Fallback DD/MM if p2 <= 12 and p1 <= 31
+        if 1 <= p2 <= 12 and 1 <= p1 <= 31:
+            try:
+                return datetime.date(default_year, p2, p1).isoformat()
+            except ValueError:
+                pass
 
     raise ValueError(f"Unable to parse date string: {date_str!r}")
 
 
 class SimpleDOMParser(HTMLParser):
-    """Lightweight, robust HTML table & text extractor with zero external dependencies."""
+    """Robust HTML table & text extractor with complete nested table support."""
 
     def __init__(self) -> None:
         super().__init__()
-        self.in_table = False
-        self.in_tr = False
-        self.in_th = False
-        self.in_td = False
+        self.tables: List[List[Dict[str, Any]]] = []
+        self.table_stack: List[Dict[str, Any]] = []
+        self.row_stack: List[Dict[str, Any]] = []
+        self.cell_stack: List[Dict[str, Any]] = []
+
         self.in_detail = False
         self.in_btn = False
-        self.current_tag = ""
-        self.current_attrs: Dict[str, str] = {}
-
-        self.tables: List[List[Dict[str, Any]]] = []
-        self.current_table: List[Dict[str, Any]] = []
-        self.current_row_cells: List[Dict[str, Any]] = []
-        self.current_row_attrs: Dict[str, str] = {}
-        self.current_cell_text: List[str] = []
-        self.current_cell_note_text: List[str] = []
-        self.current_cell_detail_text: List[str] = []
-        self.current_cell_attrs: Dict[str, str] = {}
-        self.current_cell_is_th = False
-
         self.full_text_parts: List[str] = []
 
     def handle_starttag(self, tag: str, attrs: List[Tuple[str, Optional[str]]]) -> None:
-        self.current_tag = tag.lower()
+        t = tag.lower()
         attr_dict = {k.lower(): (v or "") for k, v in attrs}
-        self.current_attrs = attr_dict
 
-        if self.current_tag == "table":
-            self.in_table = True
-            self.current_table = []
-        elif self.in_table and self.current_tag == "tr":
-            self.in_tr = True
-            self.current_row_cells = []
-            self.current_row_attrs = attr_dict
-        elif self.in_tr and self.current_tag in ("th", "td"):
-            if self.current_tag == "th":
-                self.in_th = True
-                self.current_cell_is_th = True
-            else:
-                self.in_td = True
-                self.current_cell_is_th = False
-            self.current_cell_text = []
-            self.current_cell_note_text = []
-            self.current_cell_detail_text = []
-            self.current_cell_attrs = attr_dict
-        elif self.in_td:
+        if t == "table":
+            new_table = {"rows": [], "attrs": attr_dict}
+            self.table_stack.append(new_table)
+            self.tables.append(new_table["rows"])
+        elif t == "tr":
+            if self.table_stack:
+                cur_t_id = id(self.table_stack[-1])
+                # Close previous row in same table if not explicitly closed
+                if self.row_stack and self.row_stack[-1]["table_id"] == cur_t_id:
+                    self._close_row(self.row_stack[-1])
+                new_row = {"cells": [], "attrs": attr_dict, "table_id": cur_t_id}
+                self.row_stack.append(new_row)
+                self.table_stack[-1]["rows"].append(new_row)
+        elif t in ("th", "td"):
+            if self.row_stack:
+                cur_r_id = id(self.row_stack[-1])
+                if self.cell_stack and self.cell_stack[-1]["row_id"] == cur_r_id:
+                    self._close_cell(self.cell_stack[-1])
+                new_cell = {
+                    "text_parts": [],
+                    "note_parts": [],
+                    "detail_parts": [],
+                    "is_th": (t == "th"),
+                    "attrs": attr_dict,
+                    "row_id": cur_r_id,
+                }
+                self.cell_stack.append(new_cell)
+
+            cls = attr_dict.get("class", "").lower()
+            if "detail-content" in cls:
+                self.in_detail = True
+            elif "btn-detail" in cls:
+                self.in_btn = True
+        elif t == "img":
+            title_attr = html.unescape(attr_dict.get("title", "")).strip()
+            alt_attr = html.unescape(attr_dict.get("alt", "")).strip()
+            src_attr = attr_dict.get("src", "").lower()
+
+            if "attach" in src_attr or title_attr in ("附件", "attachment") or alt_attr in ("附件", "attachment"):
+                if self.cell_stack:
+                    self.cell_stack[-1]["has_attachment"] = True
+
+            candidate_text = title_attr if title_attr and title_attr not in ("附件", "attachment", "icon", "新", "下載", "view") else alt_attr
+            if candidate_text and candidate_text not in ("附件", "attachment", "icon", "新", "下載", "view"):
+                if self.cell_stack:
+                    self.cell_stack[-1]["detail_parts"].append(candidate_text)
+        else:
             cls = attr_dict.get("class", "").lower()
             if "detail-content" in cls:
                 self.in_detail = True
             elif "btn-detail" in cls:
                 self.in_btn = True
 
+    def _close_cell(self, target_cell: Optional[Dict[str, Any]] = None) -> None:
+        if not self.cell_stack:
+            return
+        cell = self.cell_stack.pop() if target_cell is None else target_cell
+        if target_cell is not None and cell in self.cell_stack:
+            self.cell_stack.remove(cell)
+
+        raw_text = " ".join(cell["text_parts"])
+        clean_text = html.unescape(" ".join(raw_text.split())).strip()
+        clean_note = html.unescape(" ".join(" ".join(cell["note_parts"]).split())).strip() or None
+
+        raw_detail_lines = []
+        for part in cell["detail_parts"]:
+            for line in part.splitlines():
+                cl = html.unescape(" ".join(line.split())).strip()
+                if cl:
+                    raw_detail_lines.append(cl)
+        clean_detail = " ".join(raw_detail_lines).strip() or None
+
+        cell_data = {
+            "text": clean_text,
+            "note_text": clean_note,
+            "detail": clean_detail,
+            "has_attachment": cell.get("has_attachment", False),
+            "is_th": cell["is_th"],
+            "attrs": cell["attrs"],
+        }
+        for r in reversed(self.row_stack):
+            if id(r) == cell["row_id"]:
+                r["cells"].append(cell_data)
+                break
+        self.in_detail = False
+        self.in_btn = False
+
+    def _close_row(self, target_row: Optional[Dict[str, Any]] = None) -> None:
+        if not self.row_stack:
+            return
+        row = self.row_stack.pop() if target_row is None else target_row
+        if target_row is not None and row in self.row_stack:
+            self.row_stack.remove(row)
+        cur_r_id = id(row)
+        while self.cell_stack and self.cell_stack[-1]["row_id"] == cur_r_id:
+            self._close_cell(self.cell_stack[-1])
+
     def handle_endtag(self, tag: str) -> None:
         t = tag.lower()
-        if t in ("th", "td") and (self.in_th or self.in_td):
-            raw_text = " ".join(self.current_cell_text)
-            clean_text = html.unescape(" ".join(raw_text.split())).strip()
-            clean_note = html.unescape(" ".join(" ".join(self.current_cell_note_text).split())).strip() or None
-            clean_detail = html.unescape(" ".join(" ".join(self.current_cell_detail_text).split())).strip() or None
-            cell_data = {
-                "text": clean_text,
-                "note_text": clean_note,
-                "detail": clean_detail,
-                "is_th": self.current_cell_is_th,
-                "attrs": self.current_cell_attrs,
-            }
-            self.current_row_cells.append(cell_data)
-            self.in_th = False
-            self.in_td = False
-            self.in_detail = False
-            self.in_btn = False
-            self.current_cell_text = []
-            self.current_cell_note_text = []
-            self.current_cell_detail_text = []
+        if t in ("th", "td"):
+            if self.cell_stack:
+                self._close_cell()
+        elif t == "tr":
+            if self.row_stack:
+                self._close_row()
+        elif t == "table":
+            if self.table_stack:
+                cur_t_id = id(self.table_stack[-1])
+                while self.row_stack and self.row_stack[-1]["table_id"] == cur_t_id:
+                    self._close_row(self.row_stack[-1])
+                self.table_stack.pop()
         elif t in ("div", "span", "p") and self.in_detail:
             self.in_detail = False
         elif t == "a" and self.in_btn:
             self.in_btn = False
-        elif t == "tr" and self.in_tr:
-            if self.current_row_cells:
-                self.current_table.append({
-                    "cells": self.current_row_cells,
-                    "attrs": self.current_row_attrs,
-                })
-            self.in_tr = False
-            self.current_row_cells = []
-            self.current_row_attrs = {}
-        elif t == "table" and self.in_table:
-            if self.current_table:
-                self.tables.append(self.current_table)
-            self.in_table = False
-            self.current_table = []
 
     def handle_data(self, data: str) -> None:
         clean = data.strip()
         if clean:
             self.full_text_parts.append(clean)
-        if self.in_th or self.in_td:
-            self.current_cell_text.append(data)
+        if self.cell_stack:
+            self.cell_stack[-1]["text_parts"].append(data)
             if self.in_detail:
-                self.current_cell_detail_text.append(data)
+                self.cell_stack[-1]["detail_parts"].append(data)
             elif not self.in_btn and clean != "查看詳情":
-                self.current_cell_note_text.append(data)
+                self.cell_stack[-1]["note_parts"].append(data)
 
     def get_full_text(self) -> str:
         return " ".join(self.full_text_parts)
 
 
+COMMON_PUI_CHING_SUBJECTS = {
+    "中文", "英文", "數學", "常識", "視覺藝術", "視藝", "音樂", "體育",
+    "聖經", "電腦", "普通話", "圖書", "品德", "班主任", "跨學科", "自然",
+    "Chinese", "English", "Mathematics", "Maths", "General Studies", "Science",
+    "Music", "Visual Arts", "PE", "P.E.", "Bible", "Computer",
+}
+
+
 def parse_homework_table_rows(tables: List[List[Dict[str, Any]]]) -> List[Dict[str, Any]]:
     """Parse extracted tables into standardized raw homework item dictionaries."""
     raw_items: List[Dict[str, Any]] = []
+    seen_signatures = set()
+
+    print(f"DEBUG: Total tables found: {len(tables)}")
+    for i, t in enumerate(tables):
+        if not t:
+            continue
+        first_rows = [" | ".join(c.get("text", "")[:20] for c in r.get("cells", [])[:6]) for r in t[:3]]
+        # Print diagnostic if matching potential homework content
+        matches_kw = any(
+            any(any(k in c.get("text", "") for k in ("科目", "學科", "家課", "功課", "期限", "截止", "繳交", "課題", "中文", "英文", "數學")) for c in r.get("cells", []))
+            for r in t
+        )
+        if matches_kw or len(t) > 3:
+            print(f"DEBUG Table {i} ({len(t)} rows): {first_rows}")
 
     for table in tables:
         if not table:
             continue
 
         header_indices: Dict[str, int] = {}
-        data_rows: List[Dict[str, Any]] = []
+        header_row_index = -1
 
-        # Detect headers
-        for row_obj in table:
+        # 1. Detect headers in any row
+        for r_idx, row_obj in enumerate(table):
             row_cells = row_obj.get("cells", [])
-            is_header = any(c.get("is_th") for c in row_cells)
-            if not is_header and row_cells:
-                first_text = row_cells[0].get("text", "")
-                if "科目" in first_text or "項目" in first_text:
-                    is_header = True
+            cell_texts = [c.get("text", "") for c in row_cells]
 
-            if is_header and not header_indices:
+            # Check if this row is a header row
+            has_subject = any("科目" in t or "學科" in t or t.lower() == "subject" for t in cell_texts)
+            has_other_col = any(
+                any(k in t for k in ("截止", "期限", "限期", "繳交", "內容", "標題", "課題", "家課", "功課", "要求", "due", "title"))
+                for t in cell_texts
+            )
+
+            # Also check if row has th cells
+            is_th_header = any(c.get("is_th") for c in row_cells) and len(row_cells) >= 3
+
+            if (has_subject and has_other_col) or (is_th_header and not header_indices):
+                header_row_index = r_idx
                 for col_idx, cell in enumerate(row_cells):
-                    txt = cell["text"]
-                    if "科目" in txt:
-                        header_indices["subject"] = col_idx
-                    elif any(k in txt for k in ("截止", "期限", "日期", "due")):
+                    txt = cell["text"].strip()
+                    txt_lower = txt.lower()
+                    if "組別" in txt or "班別" in txt:
+                        header_indices["subject_group"] = col_idx
+                    elif "科目" in txt or txt == "學科" or "學科" in txt or txt_lower == "subject":
+                        if "subject" not in header_indices or "組別" not in txt:
+                            header_indices["subject"] = col_idx
+                    elif any(k in txt for k in ("派發", "發布", "發佈", "給予", "開始")):
+                        header_indices["issue_date"] = col_idx
+                    elif any(k in txt for k in ("限期", "截止", "期限", "交課日期", "繳交日期", "due")):
                         header_indices["due"] = col_idx
-                    elif any(k in txt for k in ("繳交", "狀態", "要求", "submit")):
+                    elif any(k in txt for k in ("繳交", "狀態", "要求", "submit", "方式")):
                         header_indices["submit"] = col_idx
-                    elif any(k in txt for k in ("備註", "說明", "note")):
+                    elif any(k in txt for k in ("備註", "說明", "note", "附件")):
                         header_indices["note"] = col_idx
                     elif any(k in txt for k in ("詳情", "detail")):
                         header_indices["detail"] = col_idx
-                    elif any(k in txt for k in ("項目", "標題", "功課")) or ("內容" in txt and "詳情" not in txt):
+                    elif any(k in txt for k in ("項目", "標題", "功課", "名稱", "課題")) or ("內容" in txt and "詳情" not in txt):
                         header_indices["title"] = col_idx
-            else:
-                data_rows.append(row_obj)
+                    elif "日期" in txt and "due" not in header_indices and "issue_date" not in header_indices:
+                        header_indices["due"] = col_idx
+                break
 
         # Fallback column mapping if no explicit header row was identified
-        if not header_indices and data_rows:
-            first_len = len(data_rows[0].get("cells", []))
+        data_rows: List[Dict[str, Any]] = []
+        if header_row_index >= 0:
+            data_rows = table[header_row_index + 1:]
+        else:
+            data_rows = table
+            first_len = len(data_rows[0].get("cells", [])) if data_rows else 0
             if first_len >= 3:
                 header_indices = {
                     "subject": 0,
@@ -287,11 +401,14 @@ def parse_homework_table_rows(tables: List[List[Dict[str, Any]]]) -> List[Dict[s
                 }
 
         # Process data rows
-        for row_obj in data_rows:
+        for r_idx, row_obj in enumerate(data_rows):
             cells = row_obj.get("cells", [])
             row_attrs = row_obj.get("attrs", {})
             if not cells:
                 continue
+
+            if len(data_rows) > 5:
+                print(f"DEBUG ROW {r_idx} (len {len(cells)}): {[c.get('text', '') for c in cells]}")
 
             item_data: Dict[str, Any] = {}
 
@@ -322,7 +439,7 @@ def parse_homework_table_rows(tables: List[List[Dict[str, Any]]]) -> List[Dict[s
                 return ""
 
             if "subject" not in item_data or not item_data["subject"]:
-                item_data["subject"] = get_col("subject")
+                item_data["subject"] = get_col("subject") or get_col("subject_group")
             if "title" not in item_data or not item_data["title"]:
                 item_data["title"] = get_col("title")
             if "due" not in item_data or not item_data["due"]:
@@ -337,23 +454,65 @@ def parse_homework_table_rows(tables: List[List[Dict[str, Any]]]) -> List[Dict[s
                         item_data["detail"] = cells[note_col]["detail"]
             if "detail" not in item_data or not item_data["detail"]:
                 detail_col = header_indices.get("detail", -1)
-                if 0 <= detail_col < len(cells):
+                if 0 <= detail_col < len(cells) and cells[detail_col].get("detail"):
                     item_data["detail"] = cells[detail_col].get("detail") or cells[detail_col]["text"]
 
+            # Also check title cell or any other cell for embedded detail (e.g. img[title] tooltips)
+            if "detail" not in item_data or not item_data["detail"]:
+                title_col = header_indices.get("title", -1)
+                if 0 <= title_col < len(cells) and cells[title_col].get("detail"):
+                    item_data["detail"] = cells[title_col]["detail"]
+                else:
+                    for c in cells:
+                        if c.get("detail"):
+                            item_data["detail"] = c["detail"]
+                            break
+
+            # If item has attachment and note doesn't mention it, record attachment
+            if any(c.get("has_attachment") for c in cells):
+                cur_note = item_data.get("note") or ""
+                if "附件" not in cur_note:
+                    item_data["note"] = f"{cur_note} 附件".strip() if cur_note else "附件"
+
+            # Heuristic fallback if subject or due missing from standard column mapping
+            if not item_data.get("subject") or not item_data.get("due"):
+                for c in cells:
+                    c_txt = c.get("text", "").strip()
+                    if not item_data.get("subject"):
+                        if c_txt in COMMON_PUI_CHING_SUBJECTS or c_txt.startswith("進階"):
+                            item_data["subject"] = c_txt
+                    if not item_data.get("due"):
+                        try:
+                            _ = canonicalize_date(c_txt)
+                            item_data["due"] = c_txt
+                        except ValueError:
+                            pass
+
             subject = item_data.get("subject", "").strip()
+            # Strip grade/class prefixes like 'P3B 中文' -> '中文', 'P.3 中文' -> '中文', 'P1E 英文' -> '英文'
+            subject = re.sub(r"^P\.?\d[A-Z\-]?\s*", "", subject).strip()
             title = item_data.get("title", "").strip()
             due_raw = item_data.get("due", "").strip()
 
             if not subject or not title or not due_raw:
+                if len(data_rows) > 5:
+                    print(f"DEBUG ROW {r_idx} SKIPPED (missing required): subject={subject!r}, title={title!r}, due_raw={due_raw!r}")
                 continue
 
             try:
                 due_iso = canonicalize_date(due_raw)
-            except ValueError:
+            except ValueError as ve:
+                if len(data_rows) > 5:
+                    print(f"DEBUG ROW {r_idx} SKIPPED (invalid date {due_raw!r}): {ve}")
                 continue
 
             submit_str = item_data.get("submit_raw", "").strip()
-            if any(k in submit_str for k in ("不須", "不用", "免交", "不需要", "no")):
+            note_str = item_data.get("note", "") or ""
+            combined_desc = f"{title} {note_str} {submit_str}"
+
+            if any(k in combined_desc for k in ("不須", "不用", "免交", "不需要", "不用默寫", "不用交", "不需繳交", "免繳交")):
+                submit_required = False
+            elif any(k in submit_str for k in ("不須", "不用", "免交", "不需要", "不需", "no")):
                 submit_required = False
             elif any(k in submit_str for k in ("須繳交", "要交", "需要", "yes", "必須")):
                 submit_required = True
@@ -363,7 +522,7 @@ def parse_homework_table_rows(tables: List[List[Dict[str, Any]]]) -> List[Dict[s
             note = item_data.get("note", "").strip() or None
             detail = item_data.get("detail", "").strip() or None
 
-            # Detect progress patterns (e.g. "進度：0/20" or "0/20" in reading awards)
+            # Detect progress patterns
             progress = None
             for field_txt in (detail or "", note or "", title):
                 prog_match = re.search(r"(?:進度|progress)[：:\s]*(\d+/\d+)", field_txt, re.I)
@@ -376,9 +535,16 @@ def parse_homework_table_rows(tables: List[List[Dict[str, Any]]]) -> List[Dict[s
                         progress = p_match.group(1)
                         break
 
-            # If detail strictly duplicates progress, clear detail
             if detail and progress and detail.strip() in (progress, f"進度：{progress}", f"進度:{progress}"):
                 detail = None
+
+            if detail and detail.strip() == title.strip():
+                detail = None
+
+            sig = (subject, title, due_iso)
+            if sig in seen_signatures:
+                continue
+            seen_signatures.add(sig)
 
             raw_item: Dict[str, Any] = {
                 "subject": subject,
@@ -393,7 +559,6 @@ def parse_homework_table_rows(tables: List[List[Dict[str, Any]]]) -> List[Dict[s
             if progress:
                 raw_item["progress"] = progress
 
-            # Preserve explicit section hint if specified on row
             if row_attrs.get("data-section"):
                 raw_item["_section"] = row_attrs["data-section"]
 
@@ -644,18 +809,59 @@ class EClassScraper:
                 "Set ECLASS_USERNAME/ECLASS_PASSWORD or child-specific environment variables."
             )
 
-        payload = urllib.parse.urlencode(
-            {"username": self.username, "password": self.password}
-        ).encode("utf-8")
+        # 1. Fetch initial portal page to acquire cookies and extract CSRF token (securetoken)
+        secure_token = ""
+        try:
+            req_init = urllib.request.Request(ECLASS_BASE_URL, headers={"User-Agent": self.opener.addheaders[0][1]})
+            with self.opener.open(req_init, timeout=15) as resp:
+                init_html = resp.read().decode("utf-8", errors="replace")
+                m = re.search(r'name=["\']securetoken["\']\s+value=["\']([^"\']+)["\']', init_html, re.I)
+                if not m:
+                    m = re.search(r'value=["\']([^"\']+)["\']\s+name=["\']securetoken["\']', init_html, re.I)
+                if m:
+                    secure_token = m.group(1)
+        except Exception:
+            pass
 
-        req = urllib.request.Request(ECLASS_LOGIN_URL, data=payload, method="POST")
+        # 2. Build payload adhering to eClass form requirements
+        payload_dict = {
+            "UserLogin": self.username,
+            "UserPassword": self.password,
+            "home_page": "1",
+            "url": "/templates/index.php?err=1&DirectLink=",
+            "submit": "登入",
+            "username": self.username,
+            "password": self.password,
+        }
+        if secure_token:
+            payload_dict["securetoken"] = secure_token
+
+        payload = urllib.parse.urlencode(payload_dict).encode("utf-8")
+
+        req = urllib.request.Request(
+            ECLASS_LOGIN_URL,
+            data=payload,
+            method="POST",
+            headers={
+                "Referer": ECLASS_BASE_URL,
+                "Origin": "https://eclass.puiching.edu.mo",
+            }
+        )
         try:
             with self.opener.open(req, timeout=15) as resp:
                 resp_text = resp.read().decode("utf-8", errors="replace")
+                final_url = resp.geturl()
+                print(f"DEBUG [{self.child_id}]: Login final URL: {final_url}")
+                print(f"DEBUG [{self.child_id}]: Cookies: {[c.name for c in self.cookie_jar]}")
         except (urllib.error.URLError, TimeoutError, OSError) as exc:
             raise LoginRequiredError(f"LOGIN_REQUIRED: eClass connection failed ({exc})") from exc
 
-        # Check for authentication failure
+        # Check for authentication failure or error redirect
+        if "err=1" in final_url or "err=" in final_url:
+            raise LoginRequiredError(
+                f"LOGIN_REQUIRED: Authentication failed on portal for {self.child_id} (err=1)"
+            )
+
         for indicator in LOGIN_FAILURE_INDICATORS:
             if indicator in resp_text.lower():
                 raise LoginRequiredError(
@@ -664,14 +870,51 @@ class EClassScraper:
 
     def fetch_homework_page(self) -> str:
         """Fetch the homework list page."""
-        req = urllib.request.Request(ECLASS_HOMEWORK_URL, method="GET")
-        try:
-            with self.opener.open(req, timeout=15) as resp:
-                return resp.read().decode("utf-8", errors="replace")
-        except (urllib.error.URLError, TimeoutError, OSError) as exc:
-            raise LoginRequiredError(
-                f"LOGIN_REQUIRED: Failed to fetch homework page ({exc})"
-            ) from exc
+        candidate_urls = [
+            ECLASS_HOMEWORK_URL,
+            "https://eclass.puiching.edu.mo/home/eService/homework/",
+            "https://eclass.puiching.edu.mo/templates/homework/index.php",
+        ]
+        last_exc = None
+        for url in candidate_urls:
+            req = urllib.request.Request(url, method="GET")
+            try:
+                with self.opener.open(req, timeout=15) as resp:
+                    final_url = resp.geturl()
+                    # If redirected to login page or root without session
+                    body = resp.read().decode("utf-8", errors="replace")
+                    print(f"DEBUG [{self.child_id}]: Fetched {final_url} (length: {len(body)})")
+                    title_m = re.search(r"<title>(.*?)</title>", body, re.I)
+                    print(f"DEBUG [{self.child_id}]: Page title: {title_m.group(1) if title_m else 'No title'}")
+                    table_count = len(re.findall(r"<table", body, re.I))
+                    print(f"DEBUG [{self.child_id}]: Table tags count: {table_count}")
+
+                    # Check for frames/iframes
+                    frames = re.findall(r'<i?frame[^>]+src=["\']([^"\']+)["\']', body, re.I)
+                    if frames:
+                        print(f"DEBUG [{self.child_id}]: Found frames: {frames}")
+                        for f_src in frames:
+                            if any(k in f_src.lower() for k in ("homework", "list", "content", "main", "view")):
+                                full_frame_url = urllib.parse.urljoin(final_url, f_src)
+                                print(f"DEBUG [{self.child_id}]: Fetching frame {full_frame_url}")
+                                try:
+                                    f_req = urllib.request.Request(full_frame_url, method="GET")
+                                    with self.opener.open(f_req, timeout=15) as f_resp:
+                                        f_body = f_resp.read().decode("utf-8", errors="replace")
+                                        if len(re.findall(r"<table", f_body, re.I)) > 0:
+                                            body += "\n" + f_body
+                                except Exception as e:
+                                    print(f"DEBUG [{self.child_id}]: Frame fetch error: {e}")
+                    return body
+            except LoginRequiredError:
+                raise
+            except (urllib.error.URLError, TimeoutError, OSError) as exc:
+                last_exc = exc
+                continue
+
+        raise LoginRequiredError(
+            f"LOGIN_REQUIRED: Failed to fetch homework page ({last_exc})"
+        )
 
     def scrape(self, today: Optional[datetime.date] = None) -> Dict[str, Any]:
         """Perform full scrape workflow: login -> fetch -> parse -> filter -> categorize."""

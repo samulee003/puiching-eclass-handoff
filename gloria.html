@@ -3,9 +3,16 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+<meta http-equiv="Pragma" content="no-cache" />
+<meta http-equiv="Expires" content="0" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="theme-color" content="#ec4899" />
 <title>李昕的功課</title>
 <meta name="description" content="李昕（Gloria）自己的功課待辦頁" />
-<link rel="stylesheet" href="assets/child.css" />
+<link rel="stylesheet" href="assets/child.css?v=20260917-07" />
 <style>
   .sync-state.local { background: #f1f5f9; color: #64748b; }
   .sync-state.connecting { background: #fef3c7; color: #d97706; }
@@ -15,10 +22,16 @@
 </head>
 <body data-accent="xin" class="simple">
   <div class="wrap">
-    <div class="topnav"><a href="index.html">家長總覽 →</a></div>
+    <div class="topnav">
+      <a href="index.html" class="nav-back">家長總覽 →</a>
+      <div class="nav-actions">
+        <button type="button" id="btnRefreshData" class="btn-refresh" title="重新整理最新功課"><span class="refresh-icon">🔄</span> <span class="refresh-text">重新整理</span></button>
+        <button type="button" class="sync-state local" data-sync-state-badge id="childSyncBadge" title="點擊查看同步狀態">本機模式 💻</button>
+      </div>
+    </div>
     <header class="hero">
       <div class="hero-top">
-        <div class="avatar" id="avatar">🐰</div>
+        <div class="avatar" id="avatar"><img src="assets/gloria_avatar.jpg" alt="🐰 李昕的兔兔頭像" onerror="this.outerHTML='🐰'"></div>
         <div class="hero-title">
           <h1><span id="child-name">李昕</span>的功課</h1>
           <div class="who" id="child-who">Gloria · P1</div>
@@ -50,9 +63,9 @@
   <div class="toast" id="toast"></div>
 
   <script>window.CHILD_ID = 'li-xin';</script>
-  <script src="sync-config.js"></script>
-  <script src="assets/qrcode.min.js"></script>
-  <script src="sync.js"></script>
-  <script src="assets/child.js"></script>
+  <script src="sync-config.js?v=20260917-07"></script>
+  <script src="assets/qrcode.min.js?v=20260917-07"></script>
+  <script src="sync.js?v=20260917-07"></script>
+  <script src="assets/child.js?v=20260917-07"></script>
 </body>
 </html>

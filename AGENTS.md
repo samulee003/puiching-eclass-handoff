@@ -90,15 +90,20 @@
 
 ## 5. 單次掃描 SOP
 
-### 自動化流程（推薦・最懶人）
+### 自動化流程（推薦・最懶人・0 AI Token 額度）
+
+本專案已建置 GitHub Actions 定時自動同步工作流，**平日每天 15:30（澳門時間）自動執行**，完全不消耗 Grok / AI Token 額度：
 
 ```bash
-# 1) 設定帳密環境變數（禁止寫進 repo）
-export ECLASS_USERNAME="your_username"
-export ECLASS_PASSWORD="your_password"
+# 手動立即觸發 GitHub Actions 同步：
+gh workflow run eclass-sync.yml
 
-# 2) 一鍵抓取並原子雙寫 status.json 與 DASHBOARD.md
-#    （自動過濾李悅進階科、保留口試詳情、核驗李昕身份、並通過 validate_status 閘門）
+# 本機執行（讀取環境變數或 per-child 專用變數）：
+export ECLASS_LI_YUE_USERNAME="p21528136"
+export ECLASS_LI_YUE_PASSWORD="***"
+export ECLASS_LI_XIN_USERNAME="p23528999"
+export ECLASS_LI_XIN_PASSWORD="***"
+
 python3 scripts/update_status.py --child li-yue --scrape
 python3 scripts/update_status.py --child li-xin --scrape
 
