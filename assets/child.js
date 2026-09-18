@@ -34,34 +34,24 @@
     ['other', '其他', '📚']
   ];
 
-  function escapeHtml(str) {
-    if (str == null) return '';
-    return String(str)
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;')
-      .replace(/'/g, '&#39;');
-  }
-
   function loadStore() {
     try { return JSON.parse(localStorage.getItem(STORE_KEY) || '{}'); }
     catch (e) { return {}; }
   }
   function saveStore(s) {
-    try { localStorage.setItem(STORE_KEY, JSON.stringify(s)); } catch (e) {}
+    localStorage.setItem(STORE_KEY, JSON.stringify(s));
     try { window.PuichingSync && window.PuichingSync.replaceTodos(s); } catch (e) {}
   }
 
-  // Points state is per-child and per-device (localStorage). Points are awarded
-  // when a task is checked, and revoked if unchecked/cancelled, keeping points
-  // strictly synchronized with actual completed tasks. `spent` tracks redemptions.
+  // Points state is per-child and per-device (localStorage). Points are awarded the
+  // first time a task is checked and are NOT removed on uncheck, so children cannot
+  // farm points by toggling. `spent` tracks redemptions.
   function loadPoints() {
     try { return JSON.parse(localStorage.getItem(POINTS_KEY) || '{}'); }
     catch (e) { return {}; }
   }
   function savePoints(p) {
-    try { localStorage.setItem(POINTS_KEY, JSON.stringify(p)); } catch (e) {}
+    localStorage.setItem(POINTS_KEY, JSON.stringify(p));
     try { window.PuichingSync && window.PuichingSync.replacePoints(p); } catch (e) {}
   }
 
@@ -286,8 +276,8 @@
       lanes +=
         '<div class="tl-lane">' +
           '<div class="tl-lanelabel">' +
-            '<span>' + subjectEmoji(r.it.subject) + ' ' + escapeHtml(shortTitle(r.it)) + '</span>' +
-            '<span class="tl-when">' + escapeHtml(chip.text) + '</span>' +
+            '<span>' + subjectEmoji(r.it.subject) + ' ' + shortTitle(r.it) + '</span>' +
+            '<span class="tl-when">' + chip.text + '</span>' +
           '</div>' +
           '<div class="tl-track"><div class="tl-bar ' + cls + '" style="left:' + left + '%;width:' + width + '%"></div></div>' +
         '</div>';
@@ -348,72 +338,6 @@
     return gained;
   }
 
-  // Revoke points when a task is unchecked/cancelled. Returns points deducted (0 if none).
-  function revokeForTask(child, key) {
-    var cfg = rewardsConfig();
-    var s = pointsState();
-    var deducted = 0;
-    if (s.awarded[key]) {
-      delete s.awarded[key];
-      var oldEarned = s.earned;
-      s.earned = Math.max(0, s.earned - cfg.perTask);
-      deducted += (oldEarned - s.earned);
-    }
-    // If daily bonus was awarded for today, check if all today's items are still done
-    var todayIso = todayMacau();
-    if (s.bonusDates[todayIso]) {
-      var store = loadStore();
-      var todayItems = child.due_today || [];
-      var allTodayDone = todayItems.length > 0 && todayItems.every(function (it) {
-        return store[itemKey(child.id, 'due_today', it)];
-      });
-      if (!allTodayDone) {
-        delete s.bonusDates[todayIso];
-        var oldBonus = s.earned;
-        s.earned = Math.max(0, s.earned - cfg.bonus);
-        deducted += (oldBonus - s.earned);
-      }
-    }
-    writePointsState(s);
-    return deducted;
-  }
-
-  // Reconcile points: heal any orphaned awarded flags where tasks are currently unchecked
-  function reconcilePoints(child) {
-    var cfg = rewardsConfig();
-    var s = pointsState();
-    var store = loadStore();
-    var changed = false;
-    var todayIso = todayMacau();
-
-    sectionItems(child).forEach(function (pair) {
-      pair[1].forEach(function (it) {
-        var k = itemKey(child.id, pair[0], it);
-        if (s.awarded[k] && !store[k]) {
-          delete s.awarded[k];
-          s.earned = Math.max(0, s.earned - cfg.perTask);
-          changed = true;
-        }
-      });
-    });
-
-    if (s.bonusDates[todayIso]) {
-      var todayItems = child.due_today || [];
-      var allTodayDone = todayItems.length > 0 && todayItems.every(function (it) {
-        return store[itemKey(child.id, 'due_today', it)];
-      });
-      if (!allTodayDone) {
-        delete s.bonusDates[todayIso];
-        s.earned = Math.max(0, s.earned - cfg.bonus);
-        changed = true;
-      }
-    }
-
-    if (changed) {
-      writePointsState(s);
-    }
-  }
-
   function renderShop(child) {
     var shop = document.getElementById('shop');
     if (!shop) return;
@@ -426,10 +350,10 @@
       var owned = s.redemptions.filter(function (r) { return r.id === item.id; }).length;
       return '' +
         '<div class="shop-item' + (affordable ? '' : ' locked') + '">' +
-          '<div class="shop-emoji">' + escapeHtml(item.emoji || '🎁') + '</div>' +
-          '<div class="shop-name">' + escapeHtml(item.name) + '</div>' +
+          '<div class="shop-emoji">' + (item.emoji || '🎁') + '</div>' +
+          '<div class="shop-name">' + item.name + '</div>' +
           '<div class="shop-cost">⭐ ' + item.cost + ' 分' + (owned ? ' · 已換 ' + owned : '') + '</div>' +
-          '<button type="button" class="shop-btn" data-reward="' + escapeHtml(item.id) + '"' +
+          '<button type="button" class="shop-btn" data-reward="' + item.id + '"' +
             (affordable ? '' : ' disabled') + '>' +
             (affordable ? '兌換' : '還差 ' + (item.cost - bal)) +
           '</button>' +
@@ -450,76 +374,6 @@
     });
   }
 
-  var confettiParticles = [];
-  var confettiRaf = null;
-
-  function triggerConfetti() {
-    try {
-      var canvas = document.getElementById('confetti-canvas');
-      if (!canvas) {
-        canvas = document.createElement('canvas');
-        canvas.id = 'confetti-canvas';
-        canvas.style.position = 'fixed';
-        canvas.style.top = '0';
-        canvas.style.left = '0';
-        canvas.style.width = '100vw';
-        canvas.style.height = '100vh';
-        canvas.style.pointerEvents = 'none';
-        canvas.style.zIndex = '9999';
-        document.body.appendChild(canvas);
-      }
-      var width = canvas.width = window.innerWidth;
-      var height = canvas.height = window.innerHeight;
-      var colors = ['#f59e0b', '#ec4899', '#3b82f6', '#10b981', '#8b5cf6', '#ef4444', '#fcd34d'];
-      for (var i = 0; i < 55; i++) {
-        confettiParticles.push({
-          x: width * (0.3 + 0.4 * Math.random()),
-          y: height * 0.45,
-          vx: (Math.random() - 0.5) * 14,
-          vy: (Math.random() - 0.8) * 15,
-          size: Math.random() * 8 + 6,
-          color: colors[Math.floor(Math.random() * colors.length)],
-          rotation: Math.random() * 360,
-          rotationSpeed: (Math.random() - 0.5) * 10,
-          life: 1
-        });
-      }
-      if (!confettiRaf) {
-        var ctx = canvas.getContext('2d');
-        function frame() {
-          ctx.clearRect(0, 0, width, height);
-          var nextParticles = [];
-          for (var j = 0; j < confettiParticles.length; j++) {
-            var p = confettiParticles[j];
-            p.x += p.vx;
-            p.y += p.vy;
-            p.vy += 0.38;
-            p.rotation += p.rotationSpeed;
-            p.life -= 0.015;
-            if (p.life > 0 && p.y < height + 50) {
-              ctx.save();
-              ctx.translate(p.x, p.y);
-              ctx.rotate(p.rotation * Math.PI / 180);
-              ctx.fillStyle = p.color;
-              ctx.globalAlpha = Math.max(0, p.life);
-              ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.6);
-              ctx.restore();
-              nextParticles.push(p);
-            }
-          }
-          confettiParticles = nextParticles;
-          if (confettiParticles.length > 0) {
-            confettiRaf = requestAnimationFrame(frame);
-          } else {
-            ctx.clearRect(0, 0, width, height);
-            confettiRaf = null;
-          }
-        }
-        confettiRaf = requestAnimationFrame(frame);
-      }
-    } catch (e) {}
-  }
-
   function redeem(child, rewardId) {
     var cfg = rewardsConfig();
     var item = cfg.catalog.filter(function (i) { return i.id === rewardId; })[0];
@@ -531,27 +385,18 @@
     }
     s.spent += item.cost;
     s.redemptions.push({ id: item.id, name: item.name, cost: item.cost, at: new Date().toISOString() });
-    if (s.redemptions.length > 50) s.redemptions = s.redemptions.slice(-50);
     writePointsState(s);
     var msg = '🎁 ' + child.zh + '想用 ' + item.cost + ' 分換 ' + (item.emoji || '') + item.name +
       '（剩 ' + balanceOf(s) + ' 分）— 請爸媽兌現小零食';
     copy(msg);
     toast('🎉 已換 ' + (item.emoji || '') + item.name + '！訊息已複製，拿給爸媽');
-    triggerConfetti();
     renderShop(child);
     updatePointsBadge();
   }
 
   function updatePointsBadge() {
     var el = document.getElementById('points');
-    if (el) {
-      el.textContent = balanceOf(pointsState());
-      var pill = el.closest ? el.closest('.points-pill') : el.parentElement;
-      if (pill) {
-        pill.style.transform = 'scale(1.15)';
-        setTimeout(function () { pill.style.transform = ''; }, 220);
-      }
-    }
+    if (el) el.textContent = balanceOf(pointsState());
   }
 
   function appendTask(ul, child, secKey, it, store, today) {
@@ -564,16 +409,16 @@
 
     var chip = dueChip(it.due, today);
     var submit = it.submit_required ? '<span class="chip submit">要交</span>' : '';
-    var detail = it.detail ? '<div class="t-detail">' + escapeHtml(it.detail) + '</div>' : '';
-    var note = it.note && it.note !== '置頂' ? '<span class="chip due-later">' + escapeHtml(it.note) + '</span>' : '';
-    var progress = it.progress ? '<span class="chip due-later">' + escapeHtml(it.progress) + '</span>' : '';
+    var detail = it.detail ? '<div class="t-detail">' + it.detail + '</div>' : '';
+    var note = it.note && it.note !== '置頂' ? '<span class="chip due-later">' + it.note + '</span>' : '';
+    var progress = it.progress ? '<span class="chip due-later">' + it.progress + '</span>' : '';
 
     li.innerHTML =
       '<span class="check" aria-hidden="true">✓</span>' +
       '<div>' +
-        '<div class="t-title">' + subjectEmoji(it.subject) + ' ' + escapeHtml(it.title || '') + '</div>' +
+        '<div class="t-title">' + subjectEmoji(it.subject) + ' ' + (it.title || '') + '</div>' +
         '<div class="t-meta">' +
-          '<span class="chip ' + chip.cls + '">' + escapeHtml(chip.text) + '</span>' +
+          '<span class="chip ' + chip.cls + '">' + chip.text + '</span>' +
           submit + note + progress +
         '</div>' + detail +
       '</div>';
@@ -586,18 +431,10 @@
       li.classList.toggle('done', nowDone);
       if (nowDone) {
         var gained = awardForTask(child, key);
-        if (gained > 0) {
-          toast('+' + gained + ' ⭐ 積分！');
-          triggerConfetti();
-        }
-      } else {
-        var lost = revokeForTask(child, key);
-        if (lost > 0) {
-          toast('-' + lost + ' ⭐ 積分（已取消）');
-        }
+        if (gained > 0) toast('+' + gained + ' ⭐ 積分！');
+        updatePointsBadge();
+        renderShop(child);
       }
-      updatePointsBadge();
-      renderShop(child);
       renderTimeline(child);
       updateProgress(child);
     }
@@ -654,7 +491,6 @@
     if (!root.children.length) {
       root.appendChild(el('div', 'empty', '🎈 今天沒有功課項目，好好玩吧！'));
     }
-    reconcilePoints(child);
     renderTimeline(child);
     renderShop(child);
     updatePointsBadge();
@@ -676,7 +512,6 @@
       var text = child.zh + '清了';
       copy(text);
       toast('🎉 太棒了！已複製「' + text + '」，拿給爸媽貼給 Grok');
-      triggerConfetti();
     } else {
       var open = [];
       (child.due_today || []).forEach(function (it) {
@@ -685,11 +520,6 @@
       (child.due_soon || []).forEach(function (it) {
         if (!store[itemKey(child.id, 'due_soon', it)]) open.push(it.title);
       });
-      if (!open.length && (child.tests_this_week || []).length) {
-        (child.tests_this_week || []).forEach(function (it) {
-          if (!store[itemKey(child.id, 'tests_this_week', it)]) open.push(it.title);
-        });
-      }
       toast('還差 ' + open.length + ' 樣：' + open.slice(0, 3).join('、') + (open.length > 3 ? '…' : ''));
     }
   }
@@ -701,189 +531,50 @@
   }
   function fallbackCopy(text) {
     var ta = document.createElement('textarea');
-    ta.value = text;
-    ta.setAttribute('readonly', '');
-    ta.style.position = 'fixed';
-    ta.style.opacity = '0';
-    ta.style.left = '-9999px';
-    document.body.appendChild(ta);
-    ta.select();
-    try { ta.setSelectionRange(0, 99999); } catch (e) {}
+    ta.value = text; document.body.appendChild(ta); ta.select();
     try { document.execCommand('copy'); } catch (e) {}
     document.body.removeChild(ta);
   }
 
-  var BTN_DONE_ATTACHED = false;
-
-  function load(isManualRefresh) {
-    var btn = document.getElementById('btnRefreshData');
-    if (btn) btn.classList.add('spinning');
-
-    fetch('status.json?ts=' + Date.now(), { cache: 'no-store' })
-      .then(function (r) {
-        if (!r.ok) {
-          throw new Error('伺服器回應 ' + r.status + '（' + (r.statusText || '請重試') + '）');
-        }
-        return r.json();
-      })
+  function load() {
+    fetch('status.json?ts=' + Date.now())
+      .then(function (r) { return r.json(); })
       .then(function (data) {
         DATA = data;
         var child = (data.children || []).filter(function (c) { return c.id === CHILD_ID; })[0];
         if (!child) {
           document.getElementById('sections').innerHTML =
-            '<div class="empty">找不到這位小朋友的資料（' + escapeHtml(CHILD_ID) + '）</div>';
+            '<div class="empty">找不到這位小朋友的資料（' + CHILD_ID + '）</div>';
           return;
         }
         document.title = child.zh + '的功課';
         document.getElementById('child-name').textContent = child.zh;
         document.getElementById('child-who').textContent =
           child.en + ' · ' + child.grade;
-        var avatarEl = document.getElementById('avatar');
-        if (CHILD_ID === 'li-yue') {
-          avatarEl.innerHTML = '<img src="assets/abigail_avatar.jpg" alt="🐶 李悅的狗狗頭像" onerror="this.outerHTML=\'🐶\'">';
-        } else {
-          avatarEl.innerHTML = '<img src="assets/gloria_avatar.jpg" alt="🐰 李昕的兔兔頭像" onerror="this.outerHTML=\'🐰\'">';
-        }
+        document.getElementById('avatar').textContent =
+          CHILD_ID === 'li-xin' ? '🐰' : '🦊';
         document.getElementById('updated').textContent = (function () {
           if (!data.updated_at) return '';
           try {
-            var formatted = new Intl.DateTimeFormat('zh-Hant', {
+            return new Intl.DateTimeFormat('zh-Hant', {
               timeZone: TZ, month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false
             }).format(new Date(data.updated_at));
-            return '🕒 課表更新時間：' + formatted;
           } catch (e) { return ''; }
         })();
         render(child);
 
-        if (!BTN_DONE_ATTACHED) {
-          BTN_DONE_ATTACHED = true;
-          document.getElementById('btn-done').addEventListener('click', function () {
-            var c = currentChild();
-            if (c) onDoneClick(c);
-          });
-        }
+        document.getElementById('btn-done').addEventListener('click', function () {
+          onDoneClick(child);
+        });
         registerSync();
-
-        if (isManualRefresh) {
-          try {
-            if (window.PuichingSync && window.PuichingSync.syncNow) {
-              window.PuichingSync.syncNow();
-            }
-          } catch (e) {}
-          toast('🔄 功課已更新至最新！');
-        }
       })
       .catch(function (e) {
         document.getElementById('sections').innerHTML =
-          '<div class="empty" style="text-align:center;padding:32px 16px;">' +
-            '<div style="font-size:2rem;margin-bottom:8px;">⚠️</div>' +
-            '<div style="font-weight:700;font-size:1.1rem;margin-bottom:6px;">暫時無法載入功課資料</div>' +
-            '<div style="font-size:0.85rem;color:var(--muted);margin-bottom:16px;">（' + escapeHtml(e.message) + '）</div>' +
-            '<button type="button" id="btnRetryLoad" style="padding:8px 20px;border-radius:99px;background:var(--accent);color:#fff;border:none;font-weight:700;font-size:0.9rem;cursor:pointer;">重新整理 🔄</button>' +
-          '</div>';
-        var retryBtn = document.getElementById('btnRetryLoad');
-        if (retryBtn) {
-          retryBtn.onclick = function () { load(true); };
-        }
-      })
-      .then(function () {
-        var btn = document.getElementById('btnRefreshData');
-        if (btn) {
-          setTimeout(function () { btn.classList.remove('spinning'); }, 500);
-        }
+          '<div class="empty">讀不到功課資料 😢（' + e.message + '）</div>';
       });
   }
 
-  function showChildSyncModal() {
-    var existing = document.getElementById('childSyncModal');
-    if (existing) { existing.style.display = 'flex'; return; }
-    var modal = document.createElement('div');
-    modal.id = 'childSyncModal';
-    modal.style.cssText = 'position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,0.65); backdrop-filter:blur(6px); display:flex; align-items:center; justify-content:center; padding:16px;';
-    modal.innerHTML =
-      '<div style="background:#fff; border-radius:18px; max-width:380px; width:100%; padding:22px; box-shadow:0 20px 40px rgba(0,0,0,0.25); text-align:center; color:#1e293b; position:relative;">' +
-      '  <button type="button" id="closeChildSyncModal" style="position:absolute; right:14px; top:14px; background:#f1f5f9; border:none; color:#64748b; border-radius:50%; width:30px; height:30px; font-size:16px; cursor:pointer; font-weight:700;">✕</button>' +
-      '  <div style="font-size:1.2rem; font-weight:800; margin-bottom:6px;">☁️ 平板同步設定</div>' +
-      '  <div id="childModalStateText" style="font-size:0.85rem; color:#64748b; margin-bottom:14px;">輸入家長端提供的 20 位家庭同步碼，即可打通即時同步。</div>' +
-      '  <div style="margin-bottom:14px;">' +
-      '    <input type="text" id="childModalInput" maxlength="24" placeholder="XXXX-XXXX-XXXX-XXXX-XXXX" style="width:100%; box-sizing:border-box; padding:12px; font-size:1rem; font-family:monospace; font-weight:700; text-align:center; text-transform:uppercase; border:2px solid #cbd5e1; border-radius:10px; outline:none;" />' +
-      '  </div>' +
-      '  <div style="display:flex; gap:8px;">' +
-      '    <button type="button" id="childModalConnectBtn" style="flex:1; padding:12px; font-weight:800; font-size:0.95rem; background:#16a34a; color:#fff; border:none; border-radius:10px; cursor:pointer;">🚀 立即連接</button>' +
-      '    <button type="button" id="childModalRetryBtn" style="padding:12px 16px; font-weight:700; font-size:0.9rem; background:#f1f5f9; color:#475569; border:1px solid #cbd5e1; border-radius:10px; cursor:pointer;">🔄 重試</button>' +
-      '  </div>' +
-      '</div>';
-    document.body.appendChild(modal);
-
-    var input = modal.querySelector('#childModalInput');
-    var saved = (localStorage.getItem('puiching-eclass-sync-code-v1') || '').trim();
-    if (saved) input.value = (saved.match(/.{1,4}/g) || []).join('-') || saved;
-
-    modal.querySelector('#closeChildSyncModal').onclick = function () { modal.style.display = 'none'; };
-    modal.onclick = function (e) { if (e.target === modal) modal.style.display = 'none'; };
-
-    modal.querySelector('#childModalConnectBtn').onclick = function () {
-      var val = (input.value || '').toUpperCase().replace(/[\s-]/g, '');
-      if (val.length !== 20) {
-        toast('⚠️ 請輸入完整的 20 位家庭同步碼！');
-        return;
-      }
-      if (window.PuichingSync && window.PuichingSync.connect) {
-        modal.querySelector('#childModalStateText').textContent = '正在連線中… ☁️';
-        window.PuichingSync.connect(val, false).then(function (ok) {
-          if (ok) {
-            modal.style.display = 'none';
-            toast('🎉 成功連接家庭同步空間！');
-          } else {
-            modal.querySelector('#childModalStateText').textContent = '⚠️ 連線失敗，請檢查代碼或網路。';
-          }
-        });
-      }
-    };
-
-    modal.querySelector('#childModalRetryBtn').onclick = function () {
-      var val = (localStorage.getItem('puiching-eclass-sync-code-v1') || input.value || '').toUpperCase().replace(/[\s-]/g, '');
-      if (val && window.PuichingSync && window.PuichingSync.connect) {
-        modal.querySelector('#childModalStateText').textContent = '正在連線中… ☁️';
-        window.PuichingSync.connect(val, false).then(function (ok) {
-          if (ok) {
-            modal.style.display = 'none';
-            toast('🎉 成功連接家庭同步空間！');
-          } else {
-            modal.querySelector('#childModalStateText').textContent = '⚠️ 連線失敗，請檢查代碼或網路。';
-          }
-        });
-      }
-    };
-  }
-
   document.addEventListener('DOMContentLoaded', function () {
-    var refreshBtn = document.getElementById('btnRefreshData');
-    if (refreshBtn) {
-      refreshBtn.onclick = function (e) {
-        e.preventDefault();
-        load(true);
-      };
-    }
-
-    var badge = document.getElementById('childSyncBadge');
-    if (badge) {
-      badge.onclick = function (e) {
-        e.preventDefault();
-        e.stopPropagation();
-        var isConnected = badge.classList.contains('connected') || badge.textContent.indexOf('已同步') !== -1;
-        if (isConnected) {
-          var toastEl = document.getElementById('toast');
-          if (toastEl) {
-            toastEl.textContent = '✅ 雲端同步正常！打勾會即時傳給家長。';
-            toastEl.classList.add('show');
-            setTimeout(function () { toastEl.classList.remove('show'); }, 2500);
-          }
-        } else {
-          showChildSyncModal();
-        }
-      };
-    }
     registerSync();
     load();
   });

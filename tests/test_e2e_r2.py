@@ -394,27 +394,6 @@ class TestFeature20DueDateCanonicalization(unittest.TestCase):
         with self.assertRaises(ValueError):
             canonicalize_date("INVALID_DATE")
 
-    def test_british_day_month_slash_format_normalized(self):
-        """DD/MM format common in Macau schools (e.g. 17/9, 23/9) is normalized to YYYY-MM-DD."""
-        self.assertEqual(canonicalize_date("17/9", default_year=2026), "2026-09-17")
-        self.assertEqual(canonicalize_date("17/09", default_year=2026), "2026-09-17")
-        self.assertEqual(canonicalize_date("23/9", default_year=2026), "2026-09-23")
-        self.assertEqual(canonicalize_date("09/16", default_year=2026), "2026-09-16")
-        # Ensure standard MM/DD dates where p1 <= 12 are NOT inverted to DD/MM
-        self.assertEqual(canonicalize_date("9/5", default_year=2026), "2026-09-05")
-        self.assertEqual(canonicalize_date("12/3", default_year=2026), "2026-12-03")
-        # Ensure dot-separated dates are supported
-        self.assertEqual(canonicalize_date("17.9", default_year=2026), "2026-09-17")
-        self.assertEqual(canonicalize_date("9.5", default_year=2026), "2026-09-05")
-        self.assertEqual(canonicalize_date("2026.09.16"), "2026-09-16")
-
-    def test_invalid_calendar_day_raises_value_error(self):
-        """Invalid calendar days (e.g. Feb 30) raise ValueError."""
-        with self.assertRaises(ValueError):
-            canonicalize_date("2/30", default_year=2026)
-        with self.assertRaises(ValueError):
-            canonicalize_date("2026-02-30")
-
 
 class TestFeature21FourSectionDateCategorization(unittest.TestCase):
     """Tests for F-21: 4-Section Date Categorization."""

@@ -31,14 +31,13 @@ import unittest
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 STATUS_JSON = ROOT / "status.json"
 FIXTURES_DIR = ROOT / "tests" / "fixtures"
-SCENARIO_JSON = FIXTURES_DIR / "scenario_status.json" if (FIXTURES_DIR / "scenario_status.json").exists() else STATUS_JSON
 
 
 class TestTier4ScenarioAbigailSchoolDay(unittest.TestCase):
     """Scenario A: Abigail (P3) Typical School Day Routine."""
 
     def setUp(self):
-        self.status = json.loads(SCENARIO_JSON.read_text(encoding="utf-8"))
+        self.status = json.loads(STATUS_JSON.read_text(encoding="utf-8"))
         self.abigail = next(c for c in self.status["children"] if c["id"] == "li-yue")
         self.rewards = self.status["rewards"]
 
@@ -87,7 +86,7 @@ class TestTier4ScenarioGloriaSchoolDay(unittest.TestCase):
     """Scenario B: Gloria (P1) First-Grade Routine."""
 
     def setUp(self):
-        self.status = json.loads(SCENARIO_JSON.read_text(encoding="utf-8"))
+        self.status = json.loads(STATUS_JSON.read_text(encoding="utf-8"))
         self.gloria = next(c for c in self.status["children"] if c["id"] == "li-xin")
 
     def test_gloria_profile_and_grade(self):
@@ -98,17 +97,15 @@ class TestTier4ScenarioGloriaSchoolDay(unittest.TestCase):
 
     def test_gloria_no_mandatory_items_due_today(self):
         """Gloria has 0 mandatory submission items due today."""
-        mandatory = [it for it in self.gloria.get("due_today", []) if it.get("submit_required")]
-        self.assertEqual(len(mandatory), 0)
+        self.assertEqual(len(self.gloria.get("due_today", [])), 0)
 
     def test_gloria_listening_quiz_tomorrow_with_non_submission(self):
-        """Gloria has a listening quiz that does not require submission."""
-        all_items = self.gloria.get("due_today", []) + self.gloria.get("due_soon", [])
-        quiz = next((it for it in all_items if "Quiz Listening" in it["title"]), None)
+        """Gloria has a listening quiz tomorrow that does not require submission."""
+        due_soon = self.gloria.get("due_soon", [])
+        quiz = next((it for it in due_soon if "Quiz Listening" in it["title"]), None)
         self.assertIsNotNone(quiz)
         self.assertFalse(quiz["submit_required"])
-        self.assertTrue("不用串字" in quiz["title"] or "不用串字" in quiz.get("note", ""))
-
+        self.assertIn("不用串字", quiz["title"])
 
     def test_gloria_retains_p1_subjects_without_advanced_filter(self):
         """Gloria's subjects include P1 general studies and vocabulary without stream filtering."""
@@ -126,7 +123,7 @@ class TestTier4ScenarioExamAndQuizWeek(unittest.TestCase):
     """Scenario C: Exam & Quiz Heavy Week."""
 
     def setUp(self):
-        self.status = json.loads(SCENARIO_JSON.read_text(encoding="utf-8"))
+        self.status = json.loads(STATUS_JSON.read_text(encoding="utf-8"))
         self.abigail = next(c for c in self.status["children"] if c["id"] == "li-yue")
         self.gloria = next(c for c in self.status["children"] if c["id"] == "li-xin")
 
@@ -151,7 +148,7 @@ class TestTier4ScenarioRewardRedemption(unittest.TestCase):
     """Scenario D: Homework Completion & Snack Shop Redemption."""
 
     def setUp(self):
-        self.status = json.loads(SCENARIO_JSON.read_text(encoding="utf-8"))
+        self.status = json.loads(STATUS_JSON.read_text(encoding="utf-8"))
         self.catalog = self.status["rewards"]["catalog"]
 
     def test_catalog_has_affordable_snacks(self):
@@ -190,77 +187,6 @@ class TestTier4ScenarioRewardRedemption(unittest.TestCase):
         self.assertEqual(net_balance, 10)
         self.assertEqual(len(points_record["redemptions"]), 1)
         self.assertEqual(points_record["redemptions"][0]["id"], "gummy")
-
-    def test_mistaken_click_and_cancel_revokes_points(self):
-        """Mistakenly checking a task and unchecking it reverts points to prevent accumulation."""
-        pts_per_task = 10
-        bonus_pts = 20
-        points_record = {
-            "earned": 0,
-            "spent": 0,
-            "awarded": {},
-            "bonusDates": {},
-            "redemptions": []
-        }
-        today_iso = "2026-09-17"
-
-        # Step 1: Accidentally check task-1
-        points_record["awarded"]["task-1"] = True
-        points_record["earned"] += pts_per_task
-        self.assertEqual(points_record["earned"], 10)
-
-        # Step 2: Cancel/uncheck task-1 (bugfix: revoke task points)
-        self.assertTrue(points_record["awarded"].get("task-1"))
-        del points_record["awarded"]["task-1"]
-        points_record["earned"] = max(points_record["spent"], points_record["earned"] - pts_per_task)
-        self.assertEqual(points_record["earned"], 0)
-        self.assertNotIn("task-1", points_record["awarded"])
-
-        # Step 3: Test with daily bonus: mistakenly check all tasks, then uncheck one
-        # Checking all tasks
-        for k in ["t-1", "t-2"]:
-            points_record["awarded"][k] = True
-            points_record["earned"] += pts_per_task
-        points_record["bonusDates"][today_iso] = True
-        points_record["earned"] += bonus_pts
-        self.assertEqual(points_record["earned"], 40)  # 20 + 20
-
-        # Now uncheck t-1
-        del points_record["awarded"]["t-1"]
-        points_record["earned"] = max(points_record["spent"], points_record["earned"] - pts_per_task)
-        # Because today tasks are no longer all done, daily bonus is revoked
-        del points_record["bonusDates"][today_iso]
-        points_record["earned"] = max(points_record["spent"], points_record["earned"] - bonus_pts)
-        self.assertEqual(points_record["earned"], 10)  # only t-2 remains
-
-    def test_cannot_exploit_infinite_points_after_spending(self):
-        """Unchecking tasks after points are spent decrements earned correctly without point duplication."""
-        pts_per_task = 10
-        points_record = {
-            "earned": 50,
-            "spent": 50,  # e.g. Redeemed gummy snack (50 points)
-            "awarded": {f"task-{i}": True for i in range(5)},
-            "bonusDates": {},
-            "redemptions": [{"id": "gummy", "cost": 50}]
-        }
-        # Balance is max(0, earned - spent) = 0
-        self.assertEqual(max(0, points_record["earned"] - points_record["spent"]), 0)
-
-        # Child unchecks task-0
-        del points_record["awarded"]["task-0"]
-        points_record["earned"] = max(0, points_record["earned"] - pts_per_task)
-        self.assertEqual(points_record["earned"], 40)
-        # Display balance is 0 (never negative)
-        self.assertEqual(max(0, points_record["earned"] - points_record["spent"]), 0)
-
-        # Child checks task-0 again
-        if not points_record["awarded"].get("task-0"):
-            points_record["awarded"]["task-0"] = True
-            points_record["earned"] += pts_per_task
-
-        # Earned is back to 50, spent is 50, balance is 0 — zero free points generated
-        self.assertEqual(points_record["earned"], 50)
-        self.assertEqual(max(0, points_record["earned"] - points_record["spent"]), 0)
 
 
 if __name__ == "__main__":
