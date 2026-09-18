@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "updated_at": "2026-09-18T03:22:14Z",
+  "updated_at": "2026-09-18T11:38:45Z",
   "timezone": "Asia/Macau",
   "repo": "https://github.com/samulee003/puiching-eclass-handoff",
   "rules": {
@@ -22,92 +22,89 @@
           "subject": "英文",
           "title": "(Ms. Au Ieong) Do sentence making (Writing Journal)",
           "due": "2026-09-18",
-          "submit_required": true,
-          "note": "老師：歐陽佩儀老師"
+          "submit_required": true
         }
       ],
       "due_soon": [
         {
-          "subject": "英文",
-          "title": "Correct Spelling Challenge",
+          "subject": "中文",
+          "title": "温默",
           "due": "2026-09-20",
           "submit_required": true,
-          "note": "老師：麥緻菁老師；原標題與 S.C. 分列"
+          "note": "附件"
         },
         {
           "subject": "英文",
-          "title": "S.C. on Monday (List 2)",
+          "title": "(Miss Valentina) Correct Spelling Challenge / S.C. on Monday (List 2)",
           "due": "2026-09-20",
-          "submit_required": true,
-          "note": "老師：麥緻菁老師；原標題與 Correct Spelling Challenge 分列"
+          "submit_required": true
         },
         {
           "subject": "英文",
           "title": "(Ms. Au Ieong) Do compre. 1",
           "due": "2026-09-21",
-          "submit_required": true,
-          "note": "老師：歐陽佩儀老師；今日新增"
+          "submit_required": true
         },
         {
           "subject": "中文",
           "title": "22/9(下周二)前背第三課2、3段",
           "due": "2026-09-22",
+          "submit_required": true
+        },
+        {
+          "subject": "中文",
+          "title": "25/9(五)默書：1.背默課文3(見書p.30第2至3段) 2.默第1和2課生字(見書p.25-26)",
+          "due": "2026-09-24",
           "submit_required": true,
-          "note": "老師：湯蔚老師"
+          "note": "附件"
         }
       ],
       "tests_this_week": [
-        {
-          "subject": "中文",
-          "title": "25/9(五)默書：第1、2課生字，背默第3課2、3段",
-          "due": "2026-09-24",
-          "submit_required": true,
-          "detail": "老師：湯蔚老師"
-        },
         {
           "subject": "英文",
           "title": "24/9 Quiz 2: U.2 vocab 1-26 + Listening",
           "due": "2026-09-24",
           "submit_required": true,
-          "detail": "老師：鄭燕明老師；詳情頁內容欄為空白"
-        },
+          "detail": "詳情未取到"
+        }
+      ],
+      "other": [
         {
           "subject": "常識",
           "title": "9月30日(三)默生詞(水的探究)",
           "due": "2026-09-30",
           "submit_required": true,
-          "detail": "1.資源 2.維持 3.流動 4.浮力 5.煮食 6.清潔 7.廣泛 8.灌溉 9.養殖 10.滅火；附件書P43.png；老師：林潤薇老師"
+          "note": "附件",
+          "detail": "1. 資源 2. 維持 3. 流動 4. 浮力 5. 煮食 6. 清潔 7. 廣泛 8. 灌溉 9. 養殖 10. 滅火"
         },
         {
           "subject": "中文",
           "title": "第七周隨堂進行第一段口試",
           "due": "2026-10-16",
           "submit_required": true,
-          "detail": "主題：愛國愛澳；三分鐘以內；粵語/普通話；可選繪本、改編或自創故事；老師：湯蔚老師"
-        }
-      ],
-      "other": [
+          "detail": "主題﹕愛國愛澳 時間﹕三分鐘以內 語言﹕粵語/普通話 要求﹕可以選取繪本、改編或自創的故事"
+        },
         {
           "subject": "中文",
           "title": "2026年度勤讀獎獲獎指標及閱讀卡",
           "due": "2027-05-07",
           "submit_required": true,
-          "detail": "全年20張；每周最多2張；截止2027-05-07；老師：林碧珊老師",
-          "progress": "0/20"
+          "note": "附件",
+          "detail": "2026年中文勤讀獎﹕ 1.全年完成20張閱讀卡； 2.每周最多只可交2張閱讀卡； 3.閱讀卡可於課室領取或eClass下載； 4.上交閱讀卡的截止日期：2027年5月7日（五）"
         },
         {
           "subject": "英文",
           "title": "26/27 Primary General English Marking Scheme",
           "due": "2027-07-01",
-          "submit_required": false,
-          "note": "老師：梁紫君老師；有PDF附件"
+          "submit_required": true,
+          "note": "附件"
         },
         {
           "subject": "英文",
           "title": "Link for LOOK textbook & Workbook audio files",
           "due": "2027-07-01",
-          "submit_required": false,
-          "detail": "https://drive.google.com/drive/folders/11ShjsPzF4-DRKLOTDwVue-o_MHhdFG4q?usp=drive_link；老師：梁紫君老師；今日新增"
+          "submit_required": true,
+          "detail": "https://drive.google.com/drive/folders/11ShjsPzF4-DRKLOTDwVue-o_MHhdFG4q?usp=drive_link"
         }
       ],
       "cleared": false,
@@ -134,9 +131,7 @@
           "title": "23/9(三)交閱讀工作紙一",
           "due": "2026-09-23",
           "submit_required": true
-        }
-      ],
-      "other": [
+        },
         {
           "subject": "常識",
           "title": "9月21至25日隨堂認讀生詞評估(不用默寫)--(第1課—我的身體)",
@@ -151,6 +146,15 @@
           "submit_required": true,
           "detail": "詳情未取到"
         },
+        {
+          "subject": "數學",
+          "title": "已派發課堂評估第1-3課",
+          "due": "2026-09-25",
+          "submit_required": true,
+          "detail": "詳情未取到"
+        }
+      ],
+      "other": [
         {
           "subject": "常識",
           "title": "「常識生詞」簿",
@@ -171,6 +175,13 @@
           "due": "2027-07-02",
           "submit_required": true,
           "note": "附件"
+        },
+        {
+          "subject": "常識",
+          "title": "9月21至25日隨堂認讀生詞評估(不用默寫)--(第1課—我的身體)",
+          "due": "2026-09-25",
+          "submit_required": false,
+          "detail": "詳情未取到"
         },
         {
           "subject": "常識",
