@@ -210,7 +210,7 @@ Session 過期：`LOGIN_REQUIRED` → 對 **該孩所屬** agent 的對話出安
 # 1) 更新 status.json + DASHBOARD.md（必要時 index.html / abigail.html / gloria.html / assets/* / sync*）
 # 2) 跑雙重驗證閘門：
 python3 scripts/validate_status.py   # 驗證 status.json Schema 與日期合規
-python3 tests/run_all_tests.py       # 執行 202 項 Tier 1~4 端對端與場景驗證
+python3 tests/run_all_tests.py       # 執行 212 項 Tier 1~4 端對端與場景驗證
 
 # 3) 檢查無密碼、無 cookie、無私鑰後發布：
 git add status.json DASHBOARD.md index.html abigail.html gloria.html assets/child.js assets/child.css AGENTS.md MEMORY.md
@@ -248,7 +248,7 @@ Pages 來源：`main` 根目錄。人類驗證：https://samulee003.github.io/pu
 2. 日曆／甘特：多月、匯出 ICS、逾期排序
 3. ~~勾選＋積分 Firebase 同步~~（已實作：`scripts/setup_firebase.sh` 一鍵自動配置，家長端原生 SVG QR Code 免打字掃碼配對）
 4. ~~自動從家課表 HTML 解析的測試夾具與抓取引擎~~（已實作：`scripts/scrape_eclass.py` 與 `fixtures/`）
-5. ~~自動化端對端測試套件與合規閘門~~（已實作：`tests/run_all_tests.py` 共 202/202 測項 100% 通過）
+5. ~~自動化端對端測試套件與合規閘門~~（已實作：`tests/run_all_tests.py` 共 212/212 測項 100% 通過）
 6. 勤讀獎進度小工具（週上限 2／目標 20）
 7. 修復／文件化「分 profile Chrome 密碼庫無法寫入」的替代方案（OS keyring／vault 注入），**仍禁止**把密寫進 git
 
@@ -296,7 +296,7 @@ Pages 來源：`main` 根目錄。人類驗證：https://samulee003.github.io/pu
 | `scripts/scrape_eclass.py` | eClass 抓取過濾器（進階科目排除、口試詳情抽取、安全驗證） |
 | `scripts/update_status.py` | 原子雙寫引擎（雙寫 `status.json` 與 `DASHBOARD.md`） |
 | `scripts/validate_status.py` | 合規驗證器（檢查結構、欄位完整性與日期格式） |
-| `tests/run_all_tests.py` | 4-Tier 202 項端對端綜合測試總套件 |
+| `tests/run_all_tests.py` | 4-Tier 212 項端對端綜合測試總套件 |
 | `SYNC_SETUP.md` | 跨裝置同步設定 |
 
-**最後更新說明：** 2026-09-16 — 全面打通 B+C 雙軌全自動懶人方案：完成 Firebase 一鍵自動設定與 SVG QR Code 免打字配對、eClass 家課表過濾抓取引擎、原子雙寫更新器，並經 202 項 E2E 測試 100% 驗證通過；`status.json`＋`DASHBOARD.md` 雙寫真相合規。
+**最後更新說明：** 2026-09-18 — 復原 GitHub Actions 定時與手動同步工作流（`.github/workflows/eclass-sync.yml`），成功執行雙孩即時爬取與原子雙寫，全套 212 項 E2E 測試 100% 通過；`status.json`＋`DASHBOARD.md` 今日功課真相合規同步。
